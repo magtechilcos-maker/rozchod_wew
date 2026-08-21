@@ -354,6 +354,21 @@ $('manualAddBtn').addEventListener('click', ()=>{
 document.querySelector('#cartTableWrap').addEventListener('click', ()=> $('scanInput').focus());
 window.addEventListener('load', ()=> $('scanInput').focus());
 
+/* Automatyczny powrót kursora do pola skanowania po dotknięciu gdziekolwiek
+   na ekranie (poza polami tekstowymi, listami i przyciskami, które akurat
+   są obsługiwane) - tak, aby czytnik kodów zawsze mógł wpisywać bez
+   konieczności ręcznego dotykania pola. */
+function isFocusableControl(el){
+  if(!el) return false;
+  const tag = el.tagName;
+  return ['INPUT','SELECT','TEXTAREA','OPTION','LABEL'].includes(tag);
+}
+document.addEventListener('click', e=>{
+  if(isFocusableControl(e.target)) return;
+  if($('loginModalBg') && $('loginModalBg').classList.contains('show')) return;
+  setTimeout(()=>{ const si = $('scanInput'); if(si) si.focus(); }, 60);
+});
+
 function addScanToCart(rawCode){
   const code = rawCode.trim();
   if(!code) return;
