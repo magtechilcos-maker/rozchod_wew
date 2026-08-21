@@ -29,6 +29,8 @@
   input[type=text],input[type=number],input[type=email],input[type=password],select{width:100%;background:#0F1317;border:1px solid var(--border);color:var(--text);padding:12px;border-radius:8px;font-size:16px;outline:none;}
   input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(245,179,1,.15);}
   #scanInput{font-size:18px;padding:16px 14px;border:2px solid var(--accent);background:#0F1317;}
+  .scan-row{display:flex;gap:8px;}
+  .scan-row input{flex:1;}
   .hint{font-size:12px;color:var(--text-dim);margin-top:8px;line-height:1.5;}
   .btn{border:none;border-radius:8px;padding:12px 16px;font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;cursor:pointer;transition:filter .15s;}
   .btn:active{filter:brightness(.9);}
@@ -57,29 +59,26 @@
   .filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;}
   .filters select,.filters input{width:auto;min-width:110px;flex:1;}
   .badge{font-size:10px;font-weight:800;padding:2px 7px;border-radius:20px;background:var(--panel-alt);color:var(--text-dim);text-transform:uppercase;}
-  .badge.done{color:var(--success);}
-  .badge.pending{color:var(--accent);}
   .scroll-table{max-height:520px;overflow-y:auto;}
   ::-webkit-scrollbar{width:8px;}
   ::-webkit-scrollbar-thumb{background:var(--border);border-radius:8px;}
   .req-star{color:var(--danger);}
   .small-note{font-size:11px;color:var(--text-dim);margin-top:6px;}
   .comarch-check{width:20px;height:20px;accent-color:var(--success);cursor:pointer;}
-  /* modal */
   .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.65);display:none;align-items:center;justify-content:center;z-index:500;padding:16px;}
   .modal-bg.show{display:flex;}
   .modal{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:22px;max-width:380px;width:100%;}
   .modal h3{margin:0 0 14px;font-size:16px;text-transform:uppercase;letter-spacing:.5px;color:var(--accent);}
   .modal .footer-actions{justify-content:flex-end;}
   .close-x{float:right;background:none;border:none;color:var(--text-dim);font-size:20px;cursor:pointer;}
-  /* admin panel */
-  #adminPanel{display:none;}
   #adminBtn.logged-in{background:var(--success);color:#0F1317;}
   .warn-banner{background:#3A2A00;border:1px solid var(--accent-dark);color:var(--accent);padding:14px 16px;border-radius:8px;margin:16px;font-size:13px;line-height:1.5;}
   .file-drop{border:2px dashed var(--border);border-radius:8px;padding:22px;text-align:center;cursor:pointer;font-size:13px;color:var(--text-dim);}
   .file-drop:hover{border-color:var(--accent);}
   .emp-list{max-height:220px;overflow-y:auto;margin-top:10px;}
   .emp-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px;}
+  .admin-grid{display:grid;grid-template-columns:1fr;gap:16px;}
+  @media(min-width:900px){.admin-grid{grid-template-columns:1fr 1fr;}}
 </style>
 </head>
 <body>
@@ -90,21 +89,21 @@
     <h1>Magazyn części — wydania</h1>
     <div class="sub">Skanuj kody kreskowe, potwierdź pobranie przy wyjściu z magazynu</div>
   </div>
-  <div>
+  <div id="adminBtnWrap" style="display:none;">
     <button class="btn btn-ghost" id="adminBtn">Zaloguj jako admin</button>
   </div>
 </header>
 
 <div id="configWarning"></div>
 
-<!-- ADMIN PANEL -->
-<div class="wrap" id="adminPanel" style="grid-template-columns:1fr 1fr;">
+<!-- ADMIN PANEL (widoczny tylko po zalogowaniu, na adresie z ?admin=1) -->
+<div class="wrap admin-grid" id="adminPanel" style="display:none;">
   <div class="panel">
     <div class="panel-head"><h2>Baza produktów (kod → nazwa)</h2></div>
     <div class="panel-body">
       <div class="file-drop" id="fileDrop">
         Kliknij, aby wybrać plik CSV lub XLSX<br>
-        <span style="font-size:11px;">Kolumny: kod, nazwa (dowolna kolejność, nagłówki: "kod"/"code" i "nazwa"/"name")</span>
+        <span style="font-size:11px;">Kolumny: kod, nazwa</span>
         <input type="file" id="fileInput" accept=".csv,.xlsx,.xls" style="display:none;">
       </div>
       <div class="small-note" id="uploadStatus"></div>
@@ -114,16 +113,27 @@
   <div class="panel">
     <div class="panel-head"><h2>Pracownicy</h2></div>
     <div class="panel-body">
-      <div class="add-emp">
-        <input type="text" id="adminNewEmployee" placeholder="Imię i nazwisko">
-        <button class="btn btn-accent btn-small" id="adminAddEmployeeBtn">Dodaj</button>
-      </div>
+      <div class="add-emp"><input type="text" id="adminNewEmployee" placeholder="Imię i nazwisko"><button class="btn btn-accent btn-small" data-list="employees">Dodaj</button></div>
       <div class="emp-list" id="adminEmpList"></div>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h2>Linie produkcyjne</h2></div>
+    <div class="panel-body">
+      <div class="add-emp"><input type="text" id="adminNewLine" placeholder="np. L-04"><button class="btn btn-accent btn-small" data-list="lines">Dodaj</button></div>
+      <div class="emp-list" id="adminLineList"></div>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h2>Urządzenia</h2></div>
+    <div class="panel-body">
+      <div class="add-emp"><input type="text" id="adminNewDevice" placeholder="np. Prasa nr 3"><button class="btn btn-accent btn-small" data-list="devices">Dodaj</button></div>
+      <div class="emp-list" id="adminDeviceList"></div>
     </div>
   </div>
 </div>
 
-<div class="wrap">
+<div class="wrap" id="mainView">
 
   <!-- LEFT: SCANNING -->
   <div class="panel">
@@ -134,8 +144,11 @@
     <div class="panel-body">
       <div class="field">
         <label>Kod kreskowy</label>
-        <input type="text" id="scanInput" placeholder="Zeskanuj kod lub wpisz ręcznie i naciśnij Enter" autocomplete="off">
-        <div class="hint">Czytnik bezprzewodowy działa jak klawiatura — trzymaj kursor w tym polu. Jeśli kod jest nieczytelny, wpisz go ręcznie (lub krótki opis) i naciśnij Enter.</div>
+        <div class="scan-row">
+          <input type="text" id="scanInput" placeholder="Zeskanuj kod lub wpisz ręcznie" autocomplete="off">
+          <button class="btn btn-accent" id="manualAddBtn">Dodaj</button>
+        </div>
+        <div class="hint">Zeskanowany kod dodaje się automatycznie. Jeśli kod jest nieczytelny, wpisz go ręcznie i kliknij „Dodaj".</div>
       </div>
 
       <div id="cartTableWrap">
@@ -152,15 +165,14 @@
         <label>Pracownik <span class="req-star">*</span></label>
         <select id="employeeSelect"><option value="">— wybierz —</option></select>
       </div>
-
       <div class="row2">
         <div class="field">
-          <label>Nr linii produkcyjnej <span class="req-star">*</span></label>
-          <input type="text" id="lineInput" placeholder="np. L-04">
+          <label>Nr linii <span class="req-star">*</span></label>
+          <select id="lineSelect"><option value="">— wybierz —</option></select>
         </div>
         <div class="field">
-          <label>Data / godzina</label>
-          <input type="text" id="dateNow" disabled>
+          <label>Urządzenie <span class="req-star">*</span></label>
+          <select id="deviceSelect"><option value="">— wybierz —</option></select>
         </div>
       </div>
 
@@ -181,7 +193,7 @@
     <div class="panel-body">
       <div class="filters">
         <select id="filterEmployee"><option value="">Wszyscy pracownicy</option></select>
-        <input type="text" id="filterLine" placeholder="Linia">
+        <select id="filterLine"><option value="">Wszystkie linie</option></select>
         <input type="text" id="filterCode" placeholder="Kod / nazwa">
         <select id="filterStatus">
           <option value="">Wszystkie statusy</option>
@@ -192,7 +204,7 @@
       <div class="scroll-table">
         <div class="empty-state" id="logEmpty">Brak zapisanych wydań.</div>
         <table id="logTable" style="display:none;">
-          <thead><tr><th>Data</th><th>Kod / produkt</th><th>Ilość</th><th>Linia</th><th>Pracownik</th><th>Comarch</th><th></th></tr></thead>
+          <thead><tr><th>Data</th><th>Kod / produkt</th><th>Ilość</th><th>Linia</th><th>Urządz.</th><th>Pracownik</th><th>Comarch</th><th></th></tr></thead>
           <tbody id="logBody"></tbody>
         </table>
       </div>
@@ -204,125 +216,149 @@
 
 <div class="toast" id="toast"></div>
 
-<!-- LOGIN MODAL -->
 <div class="modal-bg" id="loginModalBg">
   <div class="modal">
     <button class="close-x" id="closeLoginModal">✕</button>
     <h3>Logowanie administratora</h3>
-    <div class="field">
-      <label>E-mail</label>
-      <input type="email" id="loginEmail">
-    </div>
-    <div class="field">
-      <label>Hasło</label>
-      <input type="password" id="loginPassword">
-    </div>
+    <div class="field"><label>E-mail</label><input type="email" id="loginEmail"></div>
+    <div class="field"><label>Hasło</label><input type="password" id="loginPassword"></div>
     <div class="small-note" id="loginError"></div>
-    <div class="footer-actions">
-      <button class="btn btn-accent" id="doLoginBtn">Zaloguj</button>
-    </div>
+    <div class="footer-actions"><button class="btn btn-accent" id="doLoginBtn">Zaloguj</button></div>
   </div>
 </div>
 
 <script>
-/* ====================== KONFIGURACJA ======================
-   Uzupełnij poniższe dwie wartości danymi z Twojego projektu Supabase
-   (Project Settings -> API -> Project URL / anon public key).
-   ============================================================ */
+/* ====================== KONFIGURACJA ====================== */
 const SUPABASE_URL = "https://mbfyfxwvbcrpiewdaqmm.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1iZnlmeHd2YmNycGlld2RhcW1tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcyMjcwODYsImV4cCI6MjEwMjgwMzA4Nn0.JjmVy5d36tYxYE6b1xz4WtdC3UwU8Cxy9xoR3Bnbdjk";
 /* ============================================================ */
 
 const $ = id => document.getElementById(id);
+const IS_ADMIN_ROUTE = new URLSearchParams(location.search).get('admin') === '1';
+
 let sb = null;
-let products = {};   // code(lowercase) -> name
-let employees = [];  // [{id,name}]
-let cart = [];        // {code, qty, name}
+let products = {};
+let employees = [], lines = [], devices = [];
+let cart = [];
+let issuesCache = [];
 let isAdmin = false;
 
-function configOk(){
-  return !SUPABASE_URL.includes("YOUR-PROJECT") && !SUPABASE_ANON_KEY.includes("YOUR-ANON");
-}
+function configOk(){ return !SUPABASE_URL.includes("YOUR-PROJECT") && !SUPABASE_ANON_KEY.includes("YOUR-ANON"); }
 
 if(configOk()){
   sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 } else {
-  $('configWarning').innerHTML = `<div class="warn-banner">
-    <b>Konfiguracja niekompletna.</b> Uzupełnij SUPABASE_URL i SUPABASE_ANON_KEY na początku pliku index.html
-    danymi z Twojego projektu Supabase, aby aplikacja mogła się połączyć z bazą danych.
-  </div>`;
+  $('configWarning').innerHTML = `<div class="warn-banner"><b>Konfiguracja niekompletna.</b> Uzupełnij SUPABASE_URL i SUPABASE_ANON_KEY na początku pliku index.html.</div>`;
 }
+
+if(IS_ADMIN_ROUTE){ $('adminBtnWrap').style.display = 'block'; }
 
 function showToast(msg, isError){
   const t = $('toast');
   t.textContent = msg;
   t.style.background = isError ? 'var(--danger)' : 'var(--success)';
   t.classList.add('show');
-  setTimeout(()=>t.classList.remove('show'), 2200);
+  setTimeout(()=>t.classList.remove('show'), 2400);
 }
 function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function fmtDate(d){ const p=n=>String(n).padStart(2,'0'); return `${p(d.getDate())}.${p(d.getMonth()+1)}.${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`; }
-function tickClock(){ $('dateNow').value = fmtDate(new Date()); }
-setInterval(tickClock, 30000); tickClock();
 
-function lookupName(code){
-  const p = products[code.toLowerCase()];
-  return p || null;
-}
+function lookupName(code){ return products[code.toLowerCase()] || null; }
 
 /* ---------- DATA LOADING ---------- */
 async function loadProducts(){
   if(!sb) return;
   const { data, error } = await sb.from('products').select('code,name');
-  if(error){ console.error(error); return; }
+  if(error){ showToast('Błąd wczytywania bazy produktów: '+error.message, true); return; }
   products = {};
   (data||[]).forEach(r => products[r.code.toLowerCase()] = r.name);
-  $('productCount').textContent = data ? data.length : 0;
+  const el = $('productCount'); if(el) el.textContent = data ? data.length : 0;
 }
 
-async function loadEmployees(){
-  if(!sb) return;
-  const { data, error } = await sb.from('employees').select('id,name').eq('active', true).order('name');
-  if(error){ console.error(error); return; }
-  employees = data || [];
-  renderEmployeeSelects();
-  renderAdminEmpList();
+async function loadSimpleList(table){
+  const { data, error } = await sb.from(table).select('id,name').eq('active', true).order('name');
+  if(error){ showToast(`Błąd wczytywania (${table}): `+error.message, true); return []; }
+  return data || [];
 }
+async function loadEmployees(){ employees = await loadSimpleList('employees'); renderSelectGroup('employeeSelect','filterEmployee', employees); renderAdminList('adminEmpList', employees, 'employees'); }
+async function loadLines(){ lines = await loadSimpleList('lines'); renderSelectGroup('lineSelect','filterLine', lines); renderAdminList('adminLineList', lines, 'lines'); }
+async function loadDevices(){ devices = await loadSimpleList('devices'); renderSelectGroup('deviceSelect', null, devices); renderAdminList('adminDeviceList', devices, 'devices'); }
 
-let issuesCache = [];
 async function loadIssues(){
   if(!sb) return;
   const { data, error } = await sb.from('issues').select('*').order('created_at', {ascending:false}).limit(1000);
-  if(error){ console.error(error); return; }
+  if(error){ showToast('Błąd wczytywania historii: '+error.message, true); return; }
   issuesCache = data || [];
   renderLog();
 }
 
-function renderEmployeeSelects(){
-  const opts = employees.map(e=>`<option value="${escapeHtml(e.name)}">${escapeHtml(e.name)}</option>`).join('');
-  const sel = $('employeeSelect'); const prev = sel.value;
-  sel.innerHTML = '<option value="">— wybierz —</option>' + opts;
-  if(employees.some(e=>e.name===prev)) sel.value = prev;
-  const filt = $('filterEmployee'); const prevF = filt.value;
-  filt.innerHTML = '<option value="">Wszyscy pracownicy</option>' + opts;
-  if(employees.some(e=>e.name===prevF)) filt.value = prevF;
+function renderSelectGroup(mainSelectId, filterSelectId, list){
+  const opts = list.map(e=>`<option value="${escapeHtml(e.name)}">${escapeHtml(e.name)}</option>`).join('');
+  const main = $(mainSelectId);
+  if(main){ const prev = main.value; main.innerHTML = '<option value="">— wybierz —</option>' + opts; if(list.some(e=>e.name===prev)) main.value = prev; }
+  if(filterSelectId){
+    const filt = $(filterSelectId);
+    const label = filterSelectId==='filterEmployee' ? 'Wszyscy pracownicy' : 'Wszystkie linie';
+    const prevF = filt.value;
+    filt.innerHTML = `<option value="">${label}</option>` + opts;
+    if(list.some(e=>e.name===prevF)) filt.value = prevF;
+  }
 }
 
-function renderAdminEmpList(){
-  $('adminEmpList').innerHTML = employees.map(e => `
+function renderAdminList(elId, list, table){
+  const el = $(elId);
+  if(!el) return;
+  el.innerHTML = list.map(e => `
     <div class="emp-row">
       <span>${escapeHtml(e.name)}</span>
-      <button class="btn btn-danger btn-small" data-id="${e.id}" data-act="rm-emp">Usuń</button>
-    </div>`).join('') || '<div class="small-note">Brak pracowników.</div>';
+      <button class="btn btn-danger btn-small" data-id="${e.id}" data-table="${table}" data-act="rm-item">Usuń</button>
+    </div>`).join('') || '<div class="small-note">Brak pozycji.</div>';
 }
 
-/* ---------- CART / SCANNING ---------- */
+/* ---------- SCANNER-FRIENDLY INPUT ----------
+   Skanery HID wpisują cały kod w ułamku sekundy. Wykrywamy taki "błysk"
+   znaków i zatwierdzamy automatycznie, bez potrzeby klawisza Enter. */
+let keyTimes = [];
+let scanDebounce = null;
+
+$('scanInput').addEventListener('input', ()=>{
+  const now = Date.now();
+  if(keyTimes.length && now - keyTimes[keyTimes.length-1] > 700) keyTimes = [];
+  keyTimes.push(now);
+  clearTimeout(scanDebounce);
+  scanDebounce = setTimeout(()=>{
+    const val = $('scanInput').value;
+    if(!val) return;
+    if(keyTimes.length >= 3){
+      const deltas = [];
+      for(let i=1;i<keyTimes.length;i++) deltas.push(keyTimes[i]-keyTimes[i-1]);
+      const avg = deltas.reduce((a,b)=>a+b,0)/deltas.length;
+      if(avg < 60){ // szybkość typowa dla skanera, nie ręcznego wpisywania
+        addScanToCart(val);
+        $('scanInput').value = '';
+        keyTimes = [];
+      }
+    }
+  }, 200);
+});
+$('scanInput').addEventListener('keydown', e=>{
+  if(e.key === 'Enter' || e.keyCode === 13){
+    e.preventDefault();
+    if($('scanInput').value){ addScanToCart($('scanInput').value); $('scanInput').value=''; keyTimes=[]; }
+  }
+});
+$('manualAddBtn').addEventListener('click', ()=>{
+  if($('scanInput').value){ addScanToCart($('scanInput').value); $('scanInput').value=''; keyTimes=[]; }
+  $('scanInput').focus();
+});
+document.querySelector('#cartTableWrap').addEventListener('click', ()=> $('scanInput').focus());
+window.addEventListener('load', ()=> $('scanInput').focus());
+
 function addScanToCart(rawCode){
   const code = rawCode.trim();
   if(!code) return;
   const existing = cart.find(c => c.code.toLowerCase() === code.toLowerCase());
-  if(existing){ existing.qty += 1; }
-  else{ cart.push({code, qty:1, name: lookupName(code)}); }
+  if(existing){ existing.qty += 1; } else{ cart.push({code, qty:1, name: lookupName(code)}); }
   renderCart();
 }
 
@@ -338,12 +374,6 @@ function renderCart(){
     </tr>`).join('');
 }
 
-$('scanInput').addEventListener('keydown', e=>{
-  if(e.key === 'Enter'){ e.preventDefault(); addScanToCart($('scanInput').value); $('scanInput').value=''; }
-});
-document.querySelector('#cartTableWrap').addEventListener('click', ()=> $('scanInput').focus());
-window.addEventListener('load', ()=> $('scanInput').focus());
-
 $('cartBody').addEventListener('click', e=>{
   const btn = e.target.closest('button'); if(!btn) return;
   const i = Number(btn.dataset.i); const act = btn.dataset.act;
@@ -352,7 +382,6 @@ $('cartBody').addEventListener('click', e=>{
   if(act==='rm') cart.splice(i,1);
   renderCart();
 });
-
 $('clearCartBtn').addEventListener('click', ()=>{
   if(cart.length && !confirm('Wyczyścić listę zeskanowanych pozycji?')) return;
   cart = []; renderCart(); $('scanInput').focus();
@@ -360,34 +389,35 @@ $('clearCartBtn').addEventListener('click', ()=>{
 
 $('confirmBtn').addEventListener('click', async ()=>{
   const employee = $('employeeSelect').value;
-  const line = $('lineInput').value.trim();
+  const line = $('lineSelect').value;
+  const device = $('deviceSelect').value;
   $('validationNote').textContent = '';
   if(cart.length===0){ $('validationNote').textContent = 'Lista jest pusta — zeskanuj co najmniej jedną pozycję.'; return; }
   if(!employee){ $('validationNote').textContent = 'Wybierz pracownika.'; return; }
-  if(!line){ $('validationNote').textContent = 'Podaj numer linii produkcyjnej.'; return; }
+  if(!line){ $('validationNote').textContent = 'Wybierz linię.'; return; }
+  if(!device){ $('validationNote').textContent = 'Wybierz urządzenie.'; return; }
   if(!sb){ showToast('Brak konfiguracji bazy danych', true); return; }
 
-  const rows = cart.map(item => ({
-    code: item.code, product_name: item.name || null, qty: item.qty, line, employee, comarch_done:false
-  }));
-  const { error } = await sb.from('issues').insert(rows);
+  const rows = cart.map(item => ({ code: item.code, product_name: item.name || null, qty: item.qty, line, device, employee, comarch_done:false }));
+  const { data, error } = await sb.from('issues').insert(rows).select();
   if(error){ showToast('Błąd zapisu: ' + error.message, true); return; }
+  if(data && data.length){ issuesCache = [...data, ...issuesCache]; renderLog(); }
   cart = []; renderCart();
   showToast('Zapisano pobranie (' + line + ', ' + employee + ')');
-  $('lineInput').value=''; $('scanInput').focus();
+  $('scanInput').focus();
   loadIssues();
 });
 
 /* ---------- HISTORY ---------- */
 function renderLog(){
   const fEmp = $('filterEmployee').value;
-  const fLine = $('filterLine').value.trim().toLowerCase();
+  const fLine = $('filterLine').value;
   const fCode = $('filterCode').value.trim().toLowerCase();
   const fStatus = $('filterStatus').value;
 
   const rows = issuesCache
     .filter(r => !fEmp || r.employee === fEmp)
-    .filter(r => !fLine || (r.line||'').toLowerCase().includes(fLine))
+    .filter(r => !fLine || r.line === fLine)
     .filter(r => !fCode || (r.code||'').toLowerCase().includes(fCode) || (r.product_name||'').toLowerCase().includes(fCode))
     .filter(r => !fStatus || (fStatus==='done' ? r.comarch_done : !r.comarch_done));
 
@@ -398,7 +428,8 @@ function renderLog(){
       <td>${fmtDate(new Date(r.created_at))}</td>
       <td><span class="code-pill">${escapeHtml(r.code)}</span>${r.product_name ? `<span class="prod-name">${escapeHtml(r.product_name)}</span>` : ''}</td>
       <td>${r.qty}</td>
-      <td>${escapeHtml(r.line)}</td>
+      <td>${escapeHtml(r.line||'')}</td>
+      <td>${escapeHtml(r.device||'')}</td>
       <td>${escapeHtml(r.employee)}</td>
       <td><input type="checkbox" class="comarch-check" data-id="${r.id}" ${r.comarch_done?'checked':''}></td>
       <td><button class="btn btn-danger btn-small" data-id="${r.id}" data-act="del-log">Cofnij</button></td>
@@ -407,21 +438,21 @@ function renderLog(){
 
 $('logBody').addEventListener('click', async e=>{
   const btn = e.target.closest('button[data-act="del-log"]');
-  if(btn){
-    if(!confirm('Cofnąć ten wpis z historii?')) return;
-    const { error } = await sb.from('issues').delete().eq('id', btn.dataset.id);
-    if(error){ showToast('Błąd: '+error.message, true); return; }
-    loadIssues();
-  }
+  if(!btn) return;
+  if(!confirm('Cofnąć ten wpis z historii?')) return;
+  const { error } = await sb.from('issues').delete().eq('id', btn.dataset.id);
+  if(error){ showToast('Błąd: '+error.message, true); return; }
+  issuesCache = issuesCache.filter(r => r.id !== btn.dataset.id);
+  renderLog();
 });
 $('logBody').addEventListener('change', async e=>{
   const cb = e.target.closest('.comarch-check');
   if(!cb) return;
-  const { error } = await sb.from('issues').update({
-    comarch_done: cb.checked, comarch_done_at: cb.checked ? new Date().toISOString() : null
-  }).eq('id', cb.dataset.id);
-  if(error){ showToast('Błąd: '+error.message, true); cb.checked = !cb.checked; return; }
-  loadIssues();
+  const done = cb.checked;
+  const { error } = await sb.from('issues').update({ comarch_done: done, comarch_done_at: done ? new Date().toISOString() : null }).eq('id', cb.dataset.id);
+  if(error){ showToast('Błąd: '+error.message, true); cb.checked = !done; return; }
+  const row = issuesCache.find(r => r.id === cb.dataset.id);
+  if(row){ row.comarch_done = done; }
 });
 
 ['filterEmployee','filterLine','filterCode','filterStatus'].forEach(id=>{
@@ -431,11 +462,11 @@ $('logBody').addEventListener('change', async e=>{
 
 $('exportBtn').addEventListener('click', ()=>{
   if(issuesCache.length===0){ showToast('Brak danych do eksportu', true); return; }
-  const header = ['Data','Kod','Nazwa','Ilość','Linia','Pracownik','Zdjęte w Comarch'];
-  const lines = issuesCache.slice().map(r => [
-    fmtDate(new Date(r.created_at)), r.code, r.product_name||'', r.qty, r.line, r.employee, r.comarch_done?'TAK':'NIE'
+  const header = ['Data','Kod','Nazwa','Ilość','Linia','Urządzenie','Pracownik','Zdjęte w Comarch'];
+  const lines_ = issuesCache.map(r => [
+    fmtDate(new Date(r.created_at)), r.code, r.product_name||'', r.qty, r.line||'', r.device||'', r.employee, r.comarch_done?'TAK':'NIE'
   ].map(v => `"${String(v).replace(/"/g,'""')}"`).join(';'));
-  const csv = [header.join(';'), ...lines].join('\n');
+  const csv = [header.join(';'), ...lines_].join('\n');
   const blob = new Blob(['\ufeff'+csv], {type:'text/csv;charset=utf-8;'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a'); a.href = url;
@@ -443,14 +474,33 @@ $('exportBtn').addEventListener('click', ()=>{
   a.click(); URL.revokeObjectURL(url);
 });
 
-/* ---------- ADMIN LOGIN ---------- */
-$('adminBtn').addEventListener('click', async ()=>{
+/* ---------- ADMIN LOGIN (dostępny tylko na ?admin=1) ---------- */
+function updateAdminUI(){
+  const btn = $('adminBtn');
+  if(!btn) return;
   if(isAdmin){
-    await sb.auth.signOut();
-    isAdmin = false;
-    $('adminBtn').textContent = 'Zaloguj jako admin';
-    $('adminBtn').classList.remove('logged-in');
+    btn.textContent = 'Wyloguj (admin)';
+    btn.classList.add('logged-in');
+    $('adminPanel').style.display = 'grid';
+  } else {
+    btn.textContent = 'Zaloguj jako admin';
+    btn.classList.remove('logged-in');
     $('adminPanel').style.display = 'none';
+  }
+}
+
+if(sb && IS_ADMIN_ROUTE){
+  sb.auth.onAuthStateChange((event, session) => {
+    isAdmin = !!session;
+    updateAdminUI();
+  });
+}
+
+$('adminBtn')?.addEventListener('click', async ()=>{
+  if(isAdmin){
+    try{ await sb.auth.signOut(); }catch(e){ /* ignoruj, i tak resetujemy UI */ }
+    isAdmin = false;
+    updateAdminUI();
     showToast('Wylogowano');
     return;
   }
@@ -463,56 +513,56 @@ $('doLoginBtn').addEventListener('click', async ()=>{
   const password = $('loginPassword').value;
   $('loginError').textContent = '';
   const { error } = await sb.auth.signInWithPassword({ email, password });
-  if(error){ $('loginError').textContent = 'Błędny e-mail lub hasło.'; return; }
-  isAdmin = true;
+  if(error){ $('loginError').textContent = 'Błędny e-mail lub hasło (' + error.message + ')'; return; }
   $('loginModalBg').classList.remove('show');
-  $('adminBtn').textContent = 'Wyloguj (admin)';
-  $('adminBtn').classList.add('logged-in');
-  $('adminPanel').style.display = 'grid';
   $('loginPassword').value = '';
   showToast('Zalogowano jako administrator');
 });
 
-/* ---------- ADMIN: EMPLOYEES ---------- */
-$('adminAddEmployeeBtn').addEventListener('click', async ()=>{
-  const name = $('adminNewEmployee').value.trim();
-  if(!name) return;
-  const { error } = await sb.from('employees').insert({ name, active:true });
-  if(error){ showToast('Błąd: '+error.message, true); return; }
-  $('adminNewEmployee').value = '';
-  showToast('Dodano pracownika: ' + name);
-  loadEmployees();
-});
-$('adminEmpList').addEventListener('click', async e=>{
-  const btn = e.target.closest('button[data-act="rm-emp"]'); if(!btn) return;
-  if(!confirm('Usunąć pracownika z listy?')) return;
-  const { error } = await sb.from('employees').delete().eq('id', btn.dataset.id);
-  if(error){ showToast('Błąd: '+error.message, true); return; }
-  loadEmployees();
+/* ---------- ADMIN: LISTY (pracownicy / linie / urządzenia) ---------- */
+document.body.addEventListener('click', async e=>{
+  const addBtn = e.target.closest('button[data-list]');
+  if(addBtn){
+    const table = addBtn.dataset.list;
+    const inputId = table==='employees' ? 'adminNewEmployee' : table==='lines' ? 'adminNewLine' : 'adminNewDevice';
+    const name = $(inputId).value.trim();
+    if(!name) return;
+    const { error } = await sb.from(table).insert({ name, active:true });
+    if(error){ showToast('Błąd: '+error.message, true); return; }
+    $(inputId).value = '';
+    showToast('Dodano: ' + name);
+    if(table==='employees') loadEmployees(); else if(table==='lines') loadLines(); else loadDevices();
+    return;
+  }
+  const rmBtn = e.target.closest('button[data-act="rm-item"]');
+  if(rmBtn){
+    if(!confirm('Usunąć tę pozycję z listy?')) return;
+    const table = rmBtn.dataset.table;
+    const { error } = await sb.from(table).delete().eq('id', rmBtn.dataset.id);
+    if(error){ showToast('Błąd: '+error.message, true); return; }
+    if(table==='employees') loadEmployees(); else if(table==='lines') loadLines(); else loadDevices();
+  }
 });
 
-/* ---------- ADMIN: PRODUCT DATABASE UPLOAD ---------- */
-$('fileDrop').addEventListener('click', ()=> $('fileInput').click());
-$('fileInput').addEventListener('change', async e=>{
+/* ---------- ADMIN: BAZA PRODUKTÓW ---------- */
+$('fileDrop')?.addEventListener('click', ()=> $('fileInput').click());
+$('fileInput')?.addEventListener('change', async e=>{
   const file = e.target.files[0];
   if(!file) return;
   $('uploadStatus').textContent = 'Wczytywanie pliku...';
   try{
     const rows = await parseProductFile(file);
     if(rows.length===0){ $('uploadStatus').textContent = 'Nie znaleziono poprawnych wierszy (kod, nazwa).'; return; }
-    $('uploadStatus').textContent = `Zapisywanie ${rows.length} pozycji do bazy...`;
+    $('uploadStatus').textContent = `Zapisywanie ${rows.length} pozycji...`;
     const chunkSize = 500;
     for(let i=0;i<rows.length;i+=chunkSize){
-      const chunk = rows.slice(i, i+chunkSize);
-      const { error } = await sb.from('products').upsert(chunk, { onConflict:'code' });
+      const { error } = await sb.from('products').upsert(rows.slice(i, i+chunkSize), { onConflict:'code' });
       if(error){ $('uploadStatus').textContent = 'Błąd zapisu: ' + error.message; return; }
     }
     $('uploadStatus').textContent = `Zaimportowano ${rows.length} produktów.`;
     showToast('Baza produktów zaktualizowana');
     loadProducts();
-  }catch(err){
-    $('uploadStatus').textContent = 'Błąd wczytywania pliku: ' + err.message;
-  }
+  }catch(err){ $('uploadStatus').textContent = 'Błąd wczytywania pliku: ' + err.message; }
   $('fileInput').value = '';
 });
 
@@ -523,33 +573,22 @@ function normalizeRow(row){
   let code, name;
   if(codeKey && nameKey){ code = row[codeKey]; name = row[nameKey]; }
   else{ const vals = Object.values(row); code = vals[0]; name = vals[1]; }
-  code = (code||'').toString().trim();
-  name = (name||'').toString().trim();
+  code = (code||'').toString().trim(); name = (name||'').toString().trim();
   if(!code) return null;
   return { code, name: name || code };
 }
-
 function parseProductFile(file){
   return new Promise((resolve, reject)=>{
     const ext = file.name.split('.').pop().toLowerCase();
     if(ext === 'csv'){
-      Papa.parse(file, {
-        header:true, skipEmptyLines:true,
-        complete: res => {
-          const out = res.data.map(normalizeRow).filter(Boolean);
-          resolve(out);
-        },
-        error: reject
-      });
+      Papa.parse(file, { header:true, skipEmptyLines:true, complete: res => resolve(res.data.map(normalizeRow).filter(Boolean)), error: reject });
     } else {
       const reader = new FileReader();
       reader.onload = evt => {
         try{
           const wb = XLSX.read(evt.target.result, { type:'array' });
-          const sheet = wb.Sheets[wb.SheetNames[0]];
-          const json = XLSX.utils.sheet_to_json(sheet, { defval:'' });
-          const out = json.map(normalizeRow).filter(Boolean);
-          resolve(out);
+          const json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval:'' });
+          resolve(json.map(normalizeRow).filter(Boolean));
         }catch(err){ reject(err); }
       };
       reader.onerror = reject;
@@ -558,24 +597,24 @@ function parseProductFile(file){
   });
 }
 
-/* ---------- REALTIME (odśwież widok, gdy ktoś inny doda wpis) ---------- */
+/* ---------- REALTIME ---------- */
 if(sb){
   sb.channel('issues-live').on('postgres_changes', {event:'*', schema:'public', table:'issues'}, () => loadIssues()).subscribe();
   sb.channel('employees-live').on('postgres_changes', {event:'*', schema:'public', table:'employees'}, () => loadEmployees()).subscribe();
+  sb.channel('lines-live').on('postgres_changes', {event:'*', schema:'public', table:'lines'}, () => loadLines()).subscribe();
+  sb.channel('devices-live').on('postgres_changes', {event:'*', schema:'public', table:'devices'}, () => loadDevices()).subscribe();
   sb.channel('products-live').on('postgres_changes', {event:'*', schema:'public', table:'products'}, () => loadProducts()).subscribe();
 }
 
 /* ---------- INIT ---------- */
 async function init(){
   if(!sb) return;
-  const { data: { session } } = await sb.auth.getSession();
-  if(session){
-    isAdmin = true;
-    $('adminBtn').textContent = 'Wyloguj (admin)';
-    $('adminBtn').classList.add('logged-in');
-    $('adminPanel').style.display = 'grid';
+  if(IS_ADMIN_ROUTE){
+    const { data: { session } } = await sb.auth.getSession();
+    isAdmin = !!session;
+    updateAdminUI();
   }
-  await Promise.all([loadProducts(), loadEmployees(), loadIssues()]);
+  await Promise.all([loadProducts(), loadEmployees(), loadLines(), loadDevices(), loadIssues()]);
 }
 init();
 </script>
