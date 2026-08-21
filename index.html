@@ -165,15 +165,9 @@
         <label>Pracownik <span class="req-star">*</span></label>
         <select id="employeeSelect"><option value="">— wybierz —</option></select>
       </div>
-      <div class="row2">
-        <div class="field">
-          <label>Nr linii <span class="req-star">*</span></label>
-          <select id="lineSelect"><option value="">— wybierz —</option></select>
-        </div>
-        <div class="field">
-          <label>Urządzenie <span class="req-star">*</span></label>
-          <select id="deviceSelect"><option value="">— wybierz —</option></select>
-        </div>
+      <div class="field">
+        <label>Linia / urządzenie <span class="req-star">*</span></label>
+        <select id="lineDeviceSelect"><option value="">— wybierz —</option></select>
       </div>
 
       <div class="footer-actions">
@@ -193,7 +187,7 @@
     <div class="panel-body">
       <div class="filters">
         <select id="filterEmployee"><option value="">Wszyscy pracownicy</option></select>
-        <select id="filterLine"><option value="">Wszystkie linie</option></select>
+        <select id="filterLine"><option value="">Wszystkie linie/urządzenia</option></select>
         <input type="text" id="filterCode" placeholder="Kod / nazwa">
         <select id="filterStatus">
           <option value="">Wszystkie statusy</option>
@@ -204,7 +198,7 @@
       <div class="scroll-table">
         <div class="empty-state" id="logEmpty">Brak zapisanych wydań.</div>
         <table id="logTable" style="display:none;">
-          <thead><tr><th>Data</th><th>Kod / produkt</th><th>Ilość</th><th>Linia</th><th>Urządz.</th><th>Pracownik</th><th>Comarch</th><th></th></tr></thead>
+          <thead><tr><th>Data</th><th>Kod / produkt</th><th>Ilość</th><th>Linia/urządzenie</th><th>Pracownik</th><th>Comarch</th><th></th></tr></thead>
           <tbody id="logBody"></tbody>
         </table>
       </div>
@@ -281,8 +275,23 @@ async function loadSimpleList(table){
   return data || [];
 }
 async function loadEmployees(){ employees = await loadSimpleList('employees'); renderSelectGroup('employeeSelect','filterEmployee', employees); renderAdminList('adminEmpList', employees, 'employees'); }
-async function loadLines(){ lines = await loadSimpleList('lines'); renderSelectGroup('lineSelect','filterLine', lines); renderAdminList('adminLineList', lines, 'lines'); }
-async function loadDevices(){ devices = await loadSimpleList('devices'); renderSelectGroup('deviceSelect', null, devices); renderAdminList('adminDeviceList', devices, 'devices'); }
+async function loadLines(){ lines = await loadSimpleList('lines'); renderAdminList('adminLineList', lines, 'lines'); renderCombinedLineDeviceSelect(); }
+async function loadDevices(){ devices = await loadSimpleList('devices'); renderAdminList('adminDeviceList', devices, 'devices'); renderCombinedLineDeviceSelect(); }
+
+function renderCombinedLineDeviceSelect(){
+  const combined = [...lines, ...devices].sort((a,b)=> a.name.localeCompare(b.name, 'pl'));
+  const opts = combined.map(e=>`<option value="${escapeHtml(e.name)}">${escapeHtml(e.name)}</option>`).join('');
+
+  const main = $('lineDeviceSelect');
+  const prev = main.value;
+  main.innerHTML = '<option value="">— wybierz —</option>' + opts;
+  if(combined.some(e=>e.name===prev)) main.value = prev;
+
+  const filt = $('filterLine');
+  const prevF = filt.value;
+  filt.innerHTML = '<option value="">Wszystkie linie/urządzenia</option>' + opts;
+  if(combined.some(e=>e.name===prevF)) filt.value = prevF;
+}
 
 async function loadIssues(){
   if(!sb) return;
@@ -415,16 +424,14 @@ $('clearCartBtn').addEventListener('click', ()=>{
 
 $('confirmBtn').addEventListener('click', async ()=>{
   const employee = $('employeeSelect').value;
-  const line = $('lineSelect').value;
-  const device = $('deviceSelect').value;
+  const line = $('lineDeviceSelect').value;
   $('validationNote').textContent = '';
   if(cart.length===0){ $('validationNote').textContent = 'Lista jest pusta — zeskanuj co najmniej jedną pozycję.'; return; }
   if(!employee){ $('validationNote').textContent = 'Wybierz pracownika.'; return; }
-  if(!line){ $('validationNote').textContent = 'Wybierz linię.'; return; }
-  if(!device){ $('validationNote').textContent = 'Wybierz urządzenie.'; return; }
+  if(!line){ $('validationNote').textContent = 'Wybierz linię/urządzenie.'; return; }
   if(!sb){ showToast('Brak konfiguracji bazy danych', true); return; }
 
-  const rows = cart.map(item => ({ code: item.code, product_name: item.name || null, qty: item.qty, line, device, employee, comarch_done:false }));
+  const rows = cart.map(item => ({ code: item.code, product_name: item.name || null, qty: item.qty, line, device: null, employee, comarch_done:false }));
   const { data, error } = await sb.from('issues').insert(rows).select();
   if(error){ showToast('Błąd zapisu: ' + error.message, true); return; }
   if(data && data.length){ issuesCache = [...data, ...issuesCache]; renderLog(); }
@@ -443,7 +450,7 @@ function renderLog(){
 
   const rows = issuesCache
     .filter(r => !fEmp || r.employee === fEmp)
-    .filter(r => !fLine || r.line === fLine)
+    .filter(r => !fLine || r.line === fLine || r.device === fLine)
     .filter(r => !fCode || (r.code||'').toLowerCase().includes(fCode) || (r.product_name||'').toLowerCase().includes(fCode))
     .filter(r => !fStatus || (fStatus==='done' ? r.comarch_done : !r.comarch_done));
 
@@ -454,8 +461,7 @@ function renderLog(){
       <td>${fmtDate(new Date(r.created_at))}</td>
       <td><span class="code-pill">${escapeHtml(r.code)}</span>${r.product_name ? `<span class="prod-name">${escapeHtml(r.product_name)}</span>` : ''}</td>
       <td>${r.qty}</td>
-      <td>${escapeHtml(r.line||'')}</td>
-      <td>${escapeHtml(r.device||'')}</td>
+      <td>${escapeHtml(r.line||'')}${r.device ? ' / ' + escapeHtml(r.device) : ''}</td>
       <td>${escapeHtml(r.employee)}</td>
       <td><input type="checkbox" class="comarch-check" data-id="${r.id}" ${r.comarch_done?'checked':''}></td>
       <td><button class="btn btn-danger btn-small" data-id="${r.id}" data-act="del-log">Cofnij</button></td>
@@ -488,9 +494,9 @@ $('logBody').addEventListener('change', async e=>{
 
 $('exportBtn').addEventListener('click', ()=>{
   if(issuesCache.length===0){ showToast('Brak danych do eksportu', true); return; }
-  const header = ['Data','Kod','Nazwa','Ilość','Linia','Urządzenie','Pracownik','Zdjęte w Comarch'];
+  const header = ['Data','Kod','Nazwa','Ilość','Linia/urządzenie','Pracownik','Zdjęte w Comarch'];
   const lines_ = issuesCache.map(r => [
-    fmtDate(new Date(r.created_at)), r.code, r.product_name||'', r.qty, r.line||'', r.device||'', r.employee, r.comarch_done?'TAK':'NIE'
+    fmtDate(new Date(r.created_at)), r.code, r.product_name||'', r.qty, (r.line||'') + (r.device ? ' / ' + r.device : ''), r.employee, r.comarch_done?'TAK':'NIE'
   ].map(v => `"${String(v).replace(/"/g,'""')}"`).join(';'));
   const csv = [header.join(';'), ...lines_].join('\n');
   const blob = new Blob(['\ufeff'+csv], {type:'text/csv;charset=utf-8;'});
