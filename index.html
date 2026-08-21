@@ -13,8 +13,8 @@
     --text:#ECEEF0; --text-dim:#97A1AB; --border:#2F3841; --success:#4CAF6D; --danger:#E5484D; --info:#4C8DE5;
   }
   *{box-sizing:border-box;}
-  html,body{margin:0;padding:0;}
-  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;min-height:100vh;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;overscroll-behavior-y:none;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;min-height:100vh;-webkit-tap-highlight-color:transparent;overscroll-behavior-y:none;touch-action:pan-x pan-y;}
   .hazard{height:8px;background:repeating-linear-gradient(135deg,var(--accent) 0 14px,#14181C 14px 28px);flex-shrink:0;}
   header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;}
   header h1{margin:0;font-size:21px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;}
@@ -359,7 +359,17 @@ function addScanToCart(rawCode){
   if(!code) return;
   const existing = cart.find(c => c.code.toLowerCase() === code.toLowerCase());
   if(existing){ existing.qty += 1; } else{ cart.push({code, qty:1, name: lookupName(code)}); }
+  saveCartToSession();
   renderCart();
+}
+function saveCartToSession(){
+  try{ sessionStorage.setItem('magazyn_cart', JSON.stringify(cart)); }catch(e){}
+}
+function restoreCartFromSession(){
+  try{
+    const raw = sessionStorage.getItem('magazyn_cart');
+    if(raw){ cart = JSON.parse(raw) || []; }
+  }catch(e){ cart = []; }
 }
 
 function renderCart(){
@@ -380,11 +390,12 @@ $('cartBody').addEventListener('click', e=>{
   if(act==='inc') cart[i].qty += 1;
   if(act==='dec'){ cart[i].qty -= 1; if(cart[i].qty<=0) cart.splice(i,1); }
   if(act==='rm') cart.splice(i,1);
+  saveCartToSession();
   renderCart();
 });
 $('clearCartBtn').addEventListener('click', ()=>{
   if(cart.length && !confirm('Wyczyścić listę zeskanowanych pozycji?')) return;
-  cart = []; renderCart(); $('scanInput').focus();
+  cart = []; saveCartToSession(); renderCart(); $('scanInput').focus();
 });
 
 $('confirmBtn').addEventListener('click', async ()=>{
@@ -402,7 +413,7 @@ $('confirmBtn').addEventListener('click', async ()=>{
   const { data, error } = await sb.from('issues').insert(rows).select();
   if(error){ showToast('Błąd zapisu: ' + error.message, true); return; }
   if(data && data.length){ issuesCache = [...data, ...issuesCache]; renderLog(); }
-  cart = []; renderCart();
+  cart = []; saveCartToSession(); renderCart();
   showToast('Zapisano pobranie (' + line + ', ' + employee + ')');
   $('scanInput').focus();
   loadIssues();
@@ -609,6 +620,8 @@ if(sb){
 /* ---------- INIT ---------- */
 async function init(){
   if(!sb) return;
+  restoreCartFromSession();
+  renderCart();
   if(IS_ADMIN_ROUTE){
     const { data: { session } } = await sb.auth.getSession();
     isAdmin = !!session;
