@@ -46,6 +46,15 @@
   td{padding:9px 6px;border-bottom:1px solid var(--border);vertical-align:middle;}
   tr:last-child td{border-bottom:none;}
   .code-pill{font-family:"SF Mono",Consolas,monospace;background:#0F1317;padding:3px 8px;border-radius:5px;font-size:12px;border:1px solid var(--border);}
+  .code-cell{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+  .copy-btn{
+    background:var(--panel-alt);border:1px solid var(--border);color:var(--text-dim);
+    width:26px;height:26px;border-radius:6px;cursor:pointer;flex-shrink:0;
+    display:inline-flex;align-items:center;justify-content:center;padding:0;
+  }
+  .copy-btn:active{filter:brightness(1.3);}
+  .copy-btn.copied{border-color:var(--success);color:var(--success);}
+  .copy-btn svg{width:14px;height:14px;pointer-events:none;}
   .prod-name{display:block;font-size:11.5px;color:var(--text-dim);margin-top:2px;}
   .qty-ctrl{display:flex;align-items:center;gap:6px;}
   .qty-ctrl button{width:26px;height:26px;border-radius:6px;border:1px solid var(--border);background:var(--panel-alt);color:var(--text);font-size:16px;cursor:pointer;line-height:1;}
@@ -145,7 +154,7 @@
       <div class="field">
         <label>Kod kreskowy</label>
         <div class="scan-row">
-          <input type="text" id="scanInput" placeholder="Zeskanuj kod lub wpisz ręcznie" autocomplete="off">
+          <input type="text" id="scanInput" placeholder="Zeskanuj kod lub wpisz ręcznie" autocomplete="off" inputmode="none">
           <button class="btn btn-accent" id="manualAddBtn">Dodaj</button>
         </div>
         <div class="hint">Zeskanowany kod dodaje się automatycznie. Jeśli kod jest nieczytelny, wpisz go ręcznie i kliknij „Dodaj".</div>
@@ -356,12 +365,29 @@ $('scanInput').addEventListener('keydown', e=>{
     if($('scanInput').value){ addScanToCart($('scanInput').value); $('scanInput').value=''; keyTimes=[]; }
   }
 });
+function focusScanSilently(){
+  const si = $('scanInput');
+  if(!si) return;
+  si.setAttribute('inputmode', 'none');
+  si.focus();
+}
+
 $('manualAddBtn').addEventListener('click', ()=>{
   if($('scanInput').value){ addScanToCart($('scanInput').value); $('scanInput').value=''; keyTimes=[]; }
-  $('scanInput').focus();
+  focusScanSilently();
 });
-document.querySelector('#cartTableWrap').addEventListener('click', ()=> $('scanInput').focus());
+document.querySelector('#cartTableWrap').addEventListener('click', ()=> focusScanSilently());
 window.addEventListener('load', ()=> $('scanInput').focus());
+
+/* Klawiatura ekranowa ma się pojawiać TYLKO gdy użytkownik faktycznie
+   dotknie palcem pola kodu (żeby wpisać ręcznie) - nie przy automatycznym
+   przywracaniu kursora po dotknięciu gdziekolwiek indziej na ekranie. */
+$('scanInput').addEventListener('pointerdown', ()=>{
+  $('scanInput').setAttribute('inputmode', 'text');
+});
+$('scanInput').addEventListener('blur', ()=>{
+  $('scanInput').setAttribute('inputmode', 'none');
+});
 
 /* Automatyczny powrót kursora do pola skanowania po dotknięciu gdziekolwiek
    na ekranie (poza polami tekstowymi, listami i przyciskami, które akurat
@@ -375,7 +401,42 @@ function isFocusableControl(el){
 document.addEventListener('click', e=>{
   if(isFocusableControl(e.target)) return;
   if($('loginModalBg') && $('loginModalBg').classList.contains('show')) return;
-  setTimeout(()=>{ const si = $('scanInput'); if(si) si.focus(); }, 60);
+  setTimeout(()=>{
+    const si = $('scanInput');
+    if(si){ si.setAttribute('inputmode', 'none'); si.focus(); }
+  }, 60);
+});
+
+/* Kopiowanie kodu do schowka jednym dotknięciem (np. do wklejenia w Comarch) */
+document.addEventListener('click', async e=>{
+  const btn = e.target.closest('.copy-btn');
+  if(!btn) return;
+  e.stopPropagation();
+  const code = btn.dataset.copy;
+  let ok = false;
+  try{
+    await navigator.clipboard.writeText(code);
+    ok = true;
+  }catch(err){
+    try{
+      const tmp = document.createElement('textarea');
+      tmp.value = code;
+      tmp.style.position = 'fixed';
+      tmp.style.opacity = '0';
+      document.body.appendChild(tmp);
+      tmp.focus(); tmp.select();
+      document.execCommand('copy');
+      document.body.removeChild(tmp);
+      ok = true;
+    }catch(err2){ ok = false; }
+  }
+  if(ok){
+    btn.classList.add('copied');
+    showToast('Skopiowano: ' + code);
+    setTimeout(()=> btn.classList.remove('copied'), 1200);
+  } else {
+    showToast('Nie udało się skopiować kodu', true);
+  }
 });
 
 function addScanToCart(rawCode){
@@ -402,7 +463,7 @@ function renderCart(){
   $('cartEmpty').style.display='none'; $('cartTable').style.display='table';
   $('cartBody').innerHTML = cart.map((item,i) => `
     <tr>
-      <td><span class="code-pill">${escapeHtml(item.code)}</span>${item.name ? `<span class="prod-name">${escapeHtml(item.name)}</span>` : `<span class="prod-name" style="color:var(--danger);">brak w bazie produktów</span>`}</td>
+      <td><div class="code-cell"><span class="code-pill">${escapeHtml(item.code)}</span><button class="copy-btn" data-copy="${escapeHtml(item.code)}" title="Kopiuj kod"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button></div>${item.name ? `<span class="prod-name">${escapeHtml(item.name)}</span>` : `<span class="prod-name" style="color:var(--danger);">brak w bazie produktów</span>`}</td>
       <td><div class="qty-ctrl"><button data-act="dec" data-i="${i}">−</button><span>${item.qty}</span><button data-act="inc" data-i="${i}">+</button></div></td>
       <td><button class="btn btn-danger btn-small" data-act="rm" data-i="${i}">Usuń</button></td>
     </tr>`).join('');
@@ -419,7 +480,7 @@ $('cartBody').addEventListener('click', e=>{
 });
 $('clearCartBtn').addEventListener('click', ()=>{
   if(cart.length && !confirm('Wyczyścić listę zeskanowanych pozycji?')) return;
-  cart = []; saveCartToSession(); renderCart(); $('scanInput').focus();
+  cart = []; saveCartToSession(); renderCart(); focusScanSilently();
 });
 
 $('confirmBtn').addEventListener('click', async ()=>{
@@ -436,8 +497,10 @@ $('confirmBtn').addEventListener('click', async ()=>{
   if(error){ showToast('Błąd zapisu: ' + error.message, true); return; }
   if(data && data.length){ issuesCache = [...data, ...issuesCache]; renderLog(); }
   cart = []; saveCartToSession(); renderCart();
+  $('employeeSelect').value = '';
+  $('lineDeviceSelect').value = '';
   showToast('Zapisano pobranie (' + line + ', ' + employee + ')');
-  $('scanInput').focus();
+  focusScanSilently();
   loadIssues();
 });
 
@@ -459,7 +522,7 @@ function renderLog(){
   $('logBody').innerHTML = rows.map(r => `
     <tr>
       <td>${fmtDate(new Date(r.created_at))}</td>
-      <td><span class="code-pill">${escapeHtml(r.code)}</span>${r.product_name ? `<span class="prod-name">${escapeHtml(r.product_name)}</span>` : ''}</td>
+      <td><div class="code-cell"><span class="code-pill">${escapeHtml(r.code)}</span><button class="copy-btn" data-copy="${escapeHtml(r.code)}" title="Kopiuj kod"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button></div>${r.product_name ? `<span class="prod-name">${escapeHtml(r.product_name)}</span>` : ''}</td>
       <td>${r.qty}</td>
       <td>${escapeHtml(r.line||'')}${r.device ? ' / ' + escapeHtml(r.device) : ''}</td>
       <td>${escapeHtml(r.employee)}</td>
