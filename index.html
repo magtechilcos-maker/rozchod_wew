@@ -660,15 +660,15 @@ $('exportPdfBtn').addEventListener('click', ()=>{
   ]);
 
   const leftCell = companyLogo
-    ? { image: companyLogo, width: 130, alignment:'center', margin:[0,4,0,4] }
+    ? { image: companyLogo, width: 130, alignment:'center', margin:[0,8,0,4] }
     : { text:'LOGO', alignment:'center', color:'#999999', margin:[0,20,0,20] };
 
   const rightCell = {
     table: {
       widths: ['*'],
       body: [
-        [{ text: ' ' + DOCUMENT_NUMBER, fontSize:10, margin:[4,8,4,6], border:[false,false,false,false] }],
-        [{ text: ' ' + DOCUMENT_APPROVAL_DATE, fontSize:10, margin:[4,6,4,8], border:[false,false,false,false] }]
+        [{ text: ' ' + DOCUMENT_NUMBER, fontSize:10, margin:[10,8,4,6], border:[false,false,false,false] }],
+        [{ text: ' ' + DOCUMENT_APPROVAL_DATE, fontSize:10, margin:[10,6,4,8], border:[false,false,false,false] }]
       ]
     },
     layout: {
