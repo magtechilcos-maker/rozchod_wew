@@ -249,7 +249,7 @@
   <div class="modal">
     <button class="close-x" id="closePdfModal">✕</button>
     <h3>Protokół pobrań — PDF</h3>
-    <div class="field"><label>Nr dokumentu</label><input type="text" id="pdfDocNumber"></div>
+    <div class="field"><label>Nr dokumentu (możesz wpisać własny)</label><input type="text" id="pdfDocNumber"></div>
     <div class="small-note">Dokument obejmie pozycje widoczne obecnie w historii (zgodnie z ustawionymi filtrami).</div>
     <div class="footer-actions"><button class="btn btn-accent" id="doPdfBtn">Generuj PDF</button></div>
   </div>
@@ -652,8 +652,9 @@ $('exportPdfBtn').addEventListener('click', ()=>{
   const rows = getFilteredIssues();
   if(rows.length===0){ showToast('Brak danych do eksportu', true); return; }
   const now = new Date();
-  $('pdfDocNumber').value = 'PPC-' + now.getFullYear() + String(now.getMonth()+1).padStart(2,'0') + String(now.getDate()).padStart(2,'0') + '-' + String(now.getHours()).padStart(2,'0') + String(now.getMinutes()).padStart(2,'0');
+  $('pdfDocNumber').value = DOCUMENT_NUMBER_PREFIX + '-' + now.getFullYear() + String(now.getMonth()+1).padStart(2,'0') + String(now.getDate()).padStart(2,'0') + '-' + String(now.getHours()).padStart(2,'0') + String(now.getMinutes()).padStart(2,'0');
   $('pdfModalBg').classList.add('show');
+  setTimeout(()=>{ $('pdfDocNumber').focus(); $('pdfDocNumber').select(); }, 50);
 });
 $('closePdfModal').addEventListener('click', ()=> $('pdfModalBg').classList.remove('show'));
 
@@ -675,8 +676,23 @@ $('doPdfBtn').addEventListener('click', ()=>{
   ]);
 
   const leftCell = companyLogo
-    ? { image: companyLogo, width: 70, alignment:'left' }
-    : { text:'', border:[false,false,false,false] };
+    ? { image: companyLogo, width: 130, alignment:'center', margin:[0,4,0,4] }
+    : { text:'LOGO', alignment:'center', color:'#999999', margin:[0,20,0,20] };
+
+  const rightCell = {
+    table: {
+      widths: ['*'],
+      body: [
+        [{ text: 'Nr dokumentu: ' + docNumber, fontSize:10, margin:[4,8,4,6], border:[false,false,false,false] }],
+        [{ text: 'Data: ' + dateStr, fontSize:10, margin:[4,6,4,8], border:[false,false,false,false] }]
+      ]
+    },
+    layout: {
+      hLineWidth: (i)=> i===1 ? 1 : 0,
+      vLineWidth: ()=> 0,
+      hLineColor: ()=> '#333333'
+    }
+  };
 
   const docDefinition = {
     pageSize: 'A4',
@@ -685,21 +701,25 @@ $('doPdfBtn').addEventListener('click', ()=>{
     content: [
       {
         table: {
-          widths: [90, '*', 150],
+          widths: [150, '*', 150],
           body: [[
             leftCell,
-            { text: 'Protokół pobrań części', fontSize: 18, bold:true, alignment:'center', margin:[0,18,0,0] },
-            {
-              stack: [
-                { text: 'Nr dokumentu: ' + docNumber, fontSize:10, margin:[0,4,0,2] },
-                { text: 'Data: ' + dateStr, fontSize:10 }
-              ]
-            }
+            { text: 'Protokół pobrań części', fontSize: 18, bold:true, alignment:'center', margin:[0,20,0,0] },
+            rightCell
           ]]
         },
-        layout: { hLineWidth:()=>0, vLineWidth:()=>0 }
+        layout: {
+          hLineWidth: ()=> 1,
+          vLineWidth: ()=> 1,
+          hLineColor: ()=> '#333333',
+          vLineColor: ()=> '#333333',
+          paddingLeft: ()=> 8,
+          paddingRight: ()=> 8,
+          paddingTop: ()=> 4,
+          paddingBottom: ()=> 4
+        }
       },
-      { canvas: [{ type:'line', x1:0, y1:0, x2:785, y2:0, lineWidth:1, lineColor:'#333333' }], margin:[0,6,0,14] },
+      { text: '', margin:[0,6,0,10] },
       {
         table: {
           headerRows: 1,
