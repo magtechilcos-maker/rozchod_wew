@@ -245,15 +245,6 @@
   </div>
 </div>
 
-<div class="modal-bg" id="pdfModalBg">
-  <div class="modal">
-    <button class="close-x" id="closePdfModal">✕</button>
-    <h3>Protokół pobrań — PDF</h3>
-    <div class="field"><label>Nr dokumentu (możesz wpisać własny)</label><input type="text" id="pdfDocNumber"></div>
-    <div class="small-note">Dokument obejmie pozycje widoczne obecnie w historii (zgodnie z ustawionymi filtrami).</div>
-    <div class="footer-actions"><button class="btn btn-accent" id="doPdfBtn">Generuj PDF</button></div>
-  </div>
-</div>
 
 <script>
 /* ====================== KONFIGURACJA ====================== */
@@ -263,7 +254,13 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 /* Logo firmy do protokołu PDF wgrywa się w panelu administratora
    (Admin -> Logo firmy) - jest zapisywane w bazie danych, nie w pliku. */
 const DOCUMENT_TITLE = "Protokół pobrań części";
-const DOCUMENT_NUMBER_PREFIX = "PPC";
+
+/* Nr dokumentu i data zatwierdzenia to stały "formularz" zatwierdzony przez
+   kontrolę jakości - nie zmienia się przy każdym wydruku, tylko wtedy, gdy
+   dokument zostanie formalnie zaktualizowany. Zmień poniższe dwie wartości
+   ręcznie w tym pliku, kiedy nastąpi taka zmiana. */
+const DOCUMENT_NUMBER = "DT-E-014/R2";
+const DOCUMENT_APPROVAL_DATE = "28.08.2026";
 /* ============================================================ */
 
 const $ = id => document.getElementById(id);
@@ -440,7 +437,6 @@ function isFocusableControl(el){
 document.addEventListener('click', e=>{
   if(isFocusableControl(e.target)) return;
   if($('loginModalBg') && $('loginModalBg').classList.contains('show')) return;
-  if($('pdfModalBg') && $('pdfModalBg').classList.contains('show')) return;
   setTimeout(()=>{
     const si = $('scanInput');
     if(si){ si.setAttribute('inputmode', 'none'); si.focus(); }
@@ -651,18 +647,6 @@ $('logoInput')?.addEventListener('change', async e=>{
 $('exportPdfBtn').addEventListener('click', ()=>{
   const rows = getFilteredIssues();
   if(rows.length===0){ showToast('Brak danych do eksportu', true); return; }
-  const now = new Date();
-  $('pdfDocNumber').value = DOCUMENT_NUMBER_PREFIX + '-' + now.getFullYear() + String(now.getMonth()+1).padStart(2,'0') + String(now.getDate()).padStart(2,'0') + '-' + String(now.getHours()).padStart(2,'0') + String(now.getMinutes()).padStart(2,'0');
-  $('pdfModalBg').classList.add('show');
-  setTimeout(()=>{ $('pdfDocNumber').focus(); $('pdfDocNumber').select(); }, 50);
-});
-$('closePdfModal').addEventListener('click', ()=> $('pdfModalBg').classList.remove('show'));
-
-$('doPdfBtn').addEventListener('click', ()=>{
-  const docNumber = $('pdfDocNumber').value.trim() || '—';
-  const rows = getFilteredIssues();
-  const now = new Date();
-  const dateStr = fmtDate(now);
 
   const headerRow = ['Data','Kod','Nazwa','Ilość','Linia/urządzenie','Pracownik','Comarch'].map(t => ({ text:t, bold:true, fontSize:9, fillColor:'#EDEDED' }));
   const bodyRows = rows.map(r => [
@@ -683,8 +667,8 @@ $('doPdfBtn').addEventListener('click', ()=>{
     table: {
       widths: ['*'],
       body: [
-        [{ text: 'Nr dokumentu: ' + docNumber, fontSize:10, margin:[4,8,4,6], border:[false,false,false,false] }],
-        [{ text: 'Data: ' + dateStr, fontSize:10, margin:[4,6,4,8], border:[false,false,false,false] }]
+        [{ text: ' ' + DOCUMENT_NUMBER, fontSize:10, margin:[4,8,4,6], border:[false,false,false,false] }],
+        [{ text: ' ' + DOCUMENT_APPROVAL_DATE, fontSize:10, margin:[4,6,4,8], border:[false,false,false,false] }]
       ]
     },
     layout: {
@@ -704,7 +688,7 @@ $('doPdfBtn').addEventListener('click', ()=>{
           widths: [150, '*', 150],
           body: [[
             leftCell,
-            { text: 'Protokół pobrań części', fontSize: 18, bold:true, alignment:'center', margin:[0,20,0,0] },
+            { text: DOCUMENT_TITLE, fontSize: 18, bold:true, alignment:'center', margin:[0,20,0,0] },
             rightCell
           ]]
         },
@@ -732,8 +716,7 @@ $('doPdfBtn').addEventListener('click', ()=>{
     defaultStyle: { font: 'Roboto' }
   };
 
-  pdfMake.createPdf(docDefinition).download('protokol_' + docNumber + '.pdf');
-  $('pdfModalBg').classList.remove('show');
+  pdfMake.createPdf(docDefinition).download('protokol_' + new Date().toISOString().slice(0,10) + '.pdf');
 });
 
 /* ---------- ADMIN LOGIN (dostępny tylko na ?admin=1) ---------- */
