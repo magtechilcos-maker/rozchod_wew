@@ -7,6 +7,8 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pdfmake@0.2.9/build/pdfmake.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pdfmake@0.2.9/build/vfs_fonts.js"></script>
 <style>
   :root{
     --bg:#14181C; --panel:#1E242A; --panel-alt:#242B32; --accent:#F5B301; --accent-dark:#C98E00;
@@ -108,6 +110,16 @@
 <!-- ADMIN PANEL (widoczny tylko po zalogowaniu, na adresie z ?admin=1) -->
 <div class="wrap admin-grid" id="adminPanel" style="display:none;">
   <div class="panel">
+    <div class="panel-head"><h2>Logo firmy (na dokumencie PDF)</h2></div>
+    <div class="panel-body">
+      <div class="file-drop" id="logoDrop">
+        <span id="logoPreviewWrap">Kliknij, aby wgrać logo (PNG/JPG)</span>
+        <input type="file" id="logoInput" accept="image/png,image/jpeg" style="display:none;">
+      </div>
+      <div class="small-note" id="logoStatus"></div>
+    </div>
+  </div>
+  <div class="panel">
     <div class="panel-head"><h2>Baza produktów (kod → nazwa)</h2></div>
     <div class="panel-body">
       <div class="file-drop" id="fileDrop">
@@ -191,7 +203,10 @@
   <div class="panel">
     <div class="panel-head">
       <h2>Historia wydań</h2>
-      <button class="btn btn-ghost btn-small" id="exportBtn">Eksport CSV</button>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost btn-small" id="exportBtn">Eksport CSV</button>
+        <button class="btn btn-accent btn-small" id="exportPdfBtn">Protokół PDF</button>
+      </div>
     </div>
     <div class="panel-body">
       <div class="filters">
@@ -230,10 +245,25 @@
   </div>
 </div>
 
+<div class="modal-bg" id="pdfModalBg">
+  <div class="modal">
+    <button class="close-x" id="closePdfModal">✕</button>
+    <h3>Protokół pobrań — PDF</h3>
+    <div class="field"><label>Nr dokumentu</label><input type="text" id="pdfDocNumber"></div>
+    <div class="small-note">Dokument obejmie pozycje widoczne obecnie w historii (zgodnie z ustawionymi filtrami).</div>
+    <div class="footer-actions"><button class="btn btn-accent" id="doPdfBtn">Generuj PDF</button></div>
+  </div>
+</div>
+
 <script>
 /* ====================== KONFIGURACJA ====================== */
 const SUPABASE_URL = "https://mbfyfxwvbcrpiewdaqmm.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1iZnlmeHd2YmNycGlld2RhcW1tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcyMjcwODYsImV4cCI6MjEwMjgwMzA4Nn0.JjmVy5d36tYxYE6b1xz4WtdC3UwU8Cxy9xoR3Bnbdjk";
+
+/* Logo firmy do protokołu PDF wgrywa się w panelu administratora
+   (Admin -> Logo firmy) - jest zapisywane w bazie danych, nie w pliku. */
+const DOCUMENT_TITLE = "Protokół pobrań części";
+const DOCUMENT_NUMBER_PREFIX = "PPC";
 /* ============================================================ */
 
 const $ = id => document.getElementById(id);
@@ -410,6 +440,7 @@ function isFocusableControl(el){
 document.addEventListener('click', e=>{
   if(isFocusableControl(e.target)) return;
   if($('loginModalBg') && $('loginModalBg').classList.contains('show')) return;
+  if($('pdfModalBg') && $('pdfModalBg').classList.contains('show')) return;
   setTimeout(()=>{
     const si = $('scanInput');
     if(si){ si.setAttribute('inputmode', 'none'); si.focus(); }
@@ -514,17 +545,20 @@ $('confirmBtn').addEventListener('click', async ()=>{
 });
 
 /* ---------- HISTORY ---------- */
-function renderLog(){
+function getFilteredIssues(){
   const fEmp = $('filterEmployee').value;
   const fLine = $('filterLine').value;
   const fCode = $('filterCode').value.trim().toLowerCase();
   const fStatus = $('filterStatus').value;
-
-  const rows = issuesCache
+  return issuesCache
     .filter(r => !fEmp || r.employee === fEmp)
     .filter(r => !fLine || r.line === fLine || r.device === fLine)
     .filter(r => !fCode || (r.code||'').toLowerCase().includes(fCode) || (r.product_name||'').toLowerCase().includes(fCode))
     .filter(r => !fStatus || (fStatus==='done' ? r.comarch_done : !r.comarch_done));
+}
+
+function renderLog(){
+  const rows = getFilteredIssues();
 
   if(rows.length===0){ $('logEmpty').style.display='block'; $('logTable').style.display='none'; return; }
   $('logEmpty').style.display='none'; $('logTable').style.display='table';
@@ -565,9 +599,10 @@ $('logBody').addEventListener('change', async e=>{
 });
 
 $('exportBtn').addEventListener('click', ()=>{
-  if(issuesCache.length===0){ showToast('Brak danych do eksportu', true); return; }
+  const rows = getFilteredIssues();
+  if(rows.length===0){ showToast('Brak danych do eksportu', true); return; }
   const header = ['Data','Kod','Nazwa','Ilość','Linia/urządzenie','Pracownik','Zdjęte w Comarch'];
-  const lines_ = issuesCache.map(r => [
+  const lines_ = rows.map(r => [
     fmtDate(new Date(r.created_at)), r.code, r.product_name||'', r.qty, (r.line||'') + (r.device ? ' / ' + r.device : ''), r.employee, r.comarch_done?'TAK':'NIE'
   ].map(v => `"${String(v).replace(/"/g,'""')}"`).join(';'));
   const csv = [header.join(';'), ...lines_].join('\n');
@@ -576,6 +611,109 @@ $('exportBtn').addEventListener('click', ()=>{
   const a = document.createElement('a'); a.href = url;
   a.download = 'magazyn_historia_' + new Date().toISOString().slice(0,10) + '.csv';
   a.click(); URL.revokeObjectURL(url);
+});
+
+/* ---------- LOGO FIRMY (do nagłówka PDF) ---------- */
+let companyLogo = null; // data URL base64
+
+async function loadCompanyLogo(){
+  if(!sb) return;
+  const { data, error } = await sb.from('settings').select('value').eq('key','company_logo').maybeSingle();
+  if(error){ return; } // brak tabeli/ustawień - po prostu nie pokazujemy logo
+  companyLogo = data ? data.value : null;
+  const wrap = $('logoPreviewWrap');
+  if(wrap){
+    wrap.innerHTML = companyLogo
+      ? `<img src="${companyLogo}" style="max-height:50px;max-width:160px;">`
+      : 'Kliknij, aby wgrać logo (PNG/JPG)';
+  }
+}
+
+$('logoDrop')?.addEventListener('click', ()=> $('logoInput').click());
+$('logoInput')?.addEventListener('change', async e=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  $('logoStatus').textContent = 'Wczytywanie...';
+  const reader = new FileReader();
+  reader.onload = async evt => {
+    const dataUrl = evt.target.result;
+    const { error } = await sb.from('settings').upsert({ key:'company_logo', value: dataUrl });
+    if(error){ $('logoStatus').textContent = 'Błąd zapisu: ' + error.message; return; }
+    $('logoStatus').textContent = 'Logo zapisane.';
+    showToast('Logo firmy zaktualizowane');
+    loadCompanyLogo();
+  };
+  reader.readAsDataURL(file);
+  $('logoInput').value = '';
+});
+
+/* ---------- EKSPORT PDF (Protokół pobrań części) ---------- */
+$('exportPdfBtn').addEventListener('click', ()=>{
+  const rows = getFilteredIssues();
+  if(rows.length===0){ showToast('Brak danych do eksportu', true); return; }
+  const now = new Date();
+  $('pdfDocNumber').value = 'PPC-' + now.getFullYear() + String(now.getMonth()+1).padStart(2,'0') + String(now.getDate()).padStart(2,'0') + '-' + String(now.getHours()).padStart(2,'0') + String(now.getMinutes()).padStart(2,'0');
+  $('pdfModalBg').classList.add('show');
+});
+$('closePdfModal').addEventListener('click', ()=> $('pdfModalBg').classList.remove('show'));
+
+$('doPdfBtn').addEventListener('click', ()=>{
+  const docNumber = $('pdfDocNumber').value.trim() || '—';
+  const rows = getFilteredIssues();
+  const now = new Date();
+  const dateStr = fmtDate(now);
+
+  const headerRow = ['Data','Kod','Nazwa','Ilość','Linia/urządzenie','Pracownik','Comarch'].map(t => ({ text:t, bold:true, fontSize:9, fillColor:'#EDEDED' }));
+  const bodyRows = rows.map(r => [
+    { text: fmtDate(new Date(r.created_at)), fontSize:8 },
+    { text: r.code, fontSize:8 },
+    { text: r.product_name || '', fontSize:8 },
+    { text: String(r.qty), fontSize:8, alignment:'center' },
+    { text: (r.line||'') + (r.device ? ' / '+r.device : ''), fontSize:8 },
+    { text: r.employee, fontSize:8 },
+    { text: r.comarch_done ? 'TAK' : 'NIE', fontSize:8, alignment:'center' }
+  ]);
+
+  const leftCell = companyLogo
+    ? { image: companyLogo, width: 70, alignment:'left' }
+    : { text:'', border:[false,false,false,false] };
+
+  const docDefinition = {
+    pageSize: 'A4',
+    pageOrientation: 'landscape',
+    pageMargins: [28, 28, 28, 28],
+    content: [
+      {
+        table: {
+          widths: [90, '*', 150],
+          body: [[
+            leftCell,
+            { text: 'Protokół pobrań części', fontSize: 18, bold:true, alignment:'center', margin:[0,18,0,0] },
+            {
+              stack: [
+                { text: 'Nr dokumentu: ' + docNumber, fontSize:10, margin:[0,4,0,2] },
+                { text: 'Data: ' + dateStr, fontSize:10 }
+              ]
+            }
+          ]]
+        },
+        layout: { hLineWidth:()=>0, vLineWidth:()=>0 }
+      },
+      { canvas: [{ type:'line', x1:0, y1:0, x2:785, y2:0, lineWidth:1, lineColor:'#333333' }], margin:[0,6,0,14] },
+      {
+        table: {
+          headerRows: 1,
+          widths: [60, 60, '*', 30, 70, 90, 40],
+          body: [headerRow, ...bodyRows]
+        },
+        layout: 'lightHorizontalLines'
+      }
+    ],
+    defaultStyle: { font: 'Roboto' }
+  };
+
+  pdfMake.createPdf(docDefinition).download('protokol_' + docNumber + '.pdf');
+  $('pdfModalBg').classList.remove('show');
 });
 
 /* ---------- ADMIN LOGIN (dostępny tylko na ?admin=1) ---------- */
@@ -720,7 +858,7 @@ async function init(){
     isAdmin = !!session;
     updateAdminUI();
   }
-  await Promise.all([loadProducts(), loadEmployees(), loadLines(), loadDevices(), loadIssues()]);
+  await Promise.all([loadProducts(), loadEmployees(), loadLines(), loadDevices(), loadIssues(), loadCompanyLogo()]);
 }
 init();
 </script>
