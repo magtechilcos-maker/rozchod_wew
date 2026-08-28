@@ -660,23 +660,54 @@ $('exportPdfBtn').addEventListener('click', ()=>{
   ]);
 
   const leftCell = companyLogo
-    ? { image: companyLogo, width: 130, alignment:'center', margin:[0,16,0,2] }
+    ? { image: companyLogo, width: 130, alignment:'center', margin:[0,13,0,2] }
     : { text:'LOGO', alignment:'center', color:'#999999', margin:[0,20,0,20] };
 
-  const rightCell = {
-    table: {
-      widths: ['*'],
-      body: [
-        [{ text: ' ' + DOCUMENT_NUMBER, fontSize:10, alignment:'center', margin:[2,3,2,3], border:[false,false,false,false] }],
-        [{ text: ' ' + DOCUMENT_APPROVAL_DATE, fontSize:10, alignment:'center', margin:[2,3,2,3], border:[false,false,false,false] }]
+ const rightCell = {
+  table: {
+    widths: ['*'],
+    body: [
+      [
+        {
+          text: DOCUMENT_NUMBER,
+          fontSize: 10,
+          alignment: 'center',
+          margin: [2, 3, 2, 3],
+          border: [false, false, false, false]
+        }
+      ],
+      [
+        {
+          canvas: [
+            {
+              type: 'line',
+              x1: 0,
+              y1: 0,
+              x2: 100,
+              y2: 0,
+              lineWidth: 1
+            }
+          ],
+          margin: [0, 0, 0, 0],
+          border: [false, false, false, false]
+        }
+      ],
+      [
+        {
+          text: DOCUMENT_APPROVAL_DATE,
+          fontSize: 10,
+          alignment: 'center',
+          margin: [2, 3, 2, 3],
+          border: [false, false, false, false]
+        }
       ]
-    },
-    layout: {
-      hLineWidth: (i)=> i===1 ? 1 : 0,
-      vLineWidth: ()=> 0,
-      hLineColor: ()=> '#333333'
-    }
-  };
+    ]
+  },
+  layout: {
+    hLineWidth: () => 0,
+    vLineWidth: () => 0
+  }
+};
 
   const docDefinition = {
     pageSize: 'A4',
