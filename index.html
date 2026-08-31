@@ -260,7 +260,7 @@ const DOCUMENT_TITLE = "Protokół pobrań części";
    kontrolę jakości - nie zmienia się przy każdym wydruku, tylko wtedy, gdy
    dokument zostanie formalnie zaktualizowany. Zmień poniższe dwie wartości
    ręcznie w tym pliku, kiedy nastąpi taka zmiana. */
-const DOCUMENT_NUMBER = "PPC/001/2026";
+const DOCUMENT_NUMBER = "DT-E-XXXX/R1";
 const DOCUMENT_APPROVAL_DATE = "28.08.2026";
 /* ============================================================ */
 
@@ -690,15 +690,15 @@ $('exportPdfBtn').addEventListener('click', ()=>{
   ]);
 
   const leftCell = companyLogo
-    ? { image: companyLogo, width: 130, alignment:'center', margin:[0,4,0,4] }
+    ? { image: companyLogo, width: 130, alignment:'center', margin:[0,10,0,4] }
     : { text:'LOGO', alignment:'center', color:'#999999', margin:[0,20,0,20] };
 
   const rightCell = {
     table: {
       widths: ['*'],
       body: [
-        [{ text: 'Nr dokumentu: ' + DOCUMENT_NUMBER, fontSize:10, margin:[4,8,4,6], border:[false,false,false,false] }],
-        [{ text: 'Data: ' + DOCUMENT_APPROVAL_DATE, fontSize:10, margin:[4,6,4,8], border:[false,false,false,false] }]
+        [{ text: ' ' + DOCUMENT_NUMBER, fontSize:10, margin:[10,8,4,6], border:[false,false,false,false] }],
+        [{ text: ' ' + DOCUMENT_APPROVAL_DATE, fontSize:10, margin:[10,6,4,8], border:[false,false,false,false] }]
       ]
     },
     layout: {
