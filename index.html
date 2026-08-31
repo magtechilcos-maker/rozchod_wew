@@ -4,6 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Magazyn — Wydania części</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#14181C">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Magazyn">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -260,7 +267,7 @@ const DOCUMENT_TITLE = "Protokół pobrań części";
    kontrolę jakości - nie zmienia się przy każdym wydruku, tylko wtedy, gdy
    dokument zostanie formalnie zaktualizowany. Zmień poniższe dwie wartości
    ręcznie w tym pliku, kiedy nastąpi taka zmiana. */
-const DOCUMENT_NUMBER = "DT-E-XXXX/R1";
+const DOCUMENT_NUMBER = "DT-E-XXX/R1";
 const DOCUMENT_APPROVAL_DATE = "28.08.2026";
 /* ============================================================ */
 
@@ -690,15 +697,15 @@ $('exportPdfBtn').addEventListener('click', ()=>{
   ]);
 
   const leftCell = companyLogo
-    ? { image: companyLogo, width: 130, alignment:'center', margin:[0,10,0,4] }
+    ? { image: companyLogo, width: 130, alignment:'center', margin:[0,14,0,4] }
     : { text:'LOGO', alignment:'center', color:'#999999', margin:[0,20,0,20] };
 
   const rightCell = {
     table: {
       widths: ['*'],
       body: [
-        [{ text: ' ' + DOCUMENT_NUMBER, fontSize:10, alignment:'center', margin:[2,3,2,3], border:[false,false,false,false] }],
-        [{ text: ' ' + DOCUMENT_APPROVAL_DATE, fontSize:10, alignment:'center', margin:[2,3,2,3], border:[false,false,false,false] }]
+        [{ text: ' ' + DOCUMENT_NUMBER, fontSize:10, alignment: 'center', margin:[4,8,4,6], border:[false,false,false,false] }],
+        [{ text: ' ' + DOCUMENT_APPROVAL_DATE, fontSize:10, alignment: 'center', margin:[4,6,4,8], border:[false,false,false,false] }]
       ]
     },
     layout: {
@@ -894,6 +901,25 @@ async function init(){
   await Promise.all([loadProducts(), loadEmployees(), loadLines(), loadDevices(), loadIssues(), loadCompanyLogo()]);
 }
 init();
+
+/* Odświeżanie danych co 5 minut - niezależnie od połączenia "na żywo",
+   na wypadek gdyby tablet stracił na chwilę łączność z Supabase Realtime. */
+setInterval(()=>{
+  loadProducts();
+  loadEmployees();
+  loadLines();
+  loadDevices();
+  loadIssues();
+  loadCompanyLogo();
+}, 5 * 60 * 1000);
+
+/* Rejestracja service workera - potrzebna, żeby aplikację dało się
+   zainstalować na ekranie głównym tabletu (jak zwykłą apkę). */
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  });
+}
 </script>
 </body>
 </html>
