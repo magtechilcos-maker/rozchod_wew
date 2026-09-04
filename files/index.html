@@ -256,8 +256,8 @@
 
 <script>
 /* ====================== KONFIGURACJA ====================== */
-const SUPABASE_URL = "https://mbfyfxwvbcrpiewdaqmm.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1iZnlmeHd2YmNycGlld2RhcW1tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcyMjcwODYsImV4cCI6MjEwMjgwMzA4Nn0.JjmVy5d36tYxYE6b1xz4WtdC3UwU8Cxy9xoR3Bnbdjk";
+const SUPABASE_URL = "https://YOUR-PROJECT.supabase.co";
+const SUPABASE_ANON_KEY = "YOUR-ANON-PUBLIC-KEY";
 
 /* Logo firmy do protokołu PDF wgrywa się w panelu administratora
    (Admin -> Logo firmy) - jest zapisywane w bazie danych, nie w pliku. */
@@ -267,8 +267,8 @@ const DOCUMENT_TITLE = "Protokół pobrań części";
    kontrolę jakości - nie zmienia się przy każdym wydruku, tylko wtedy, gdy
    dokument zostanie formalnie zaktualizowany. Zmień poniższe dwie wartości
    ręcznie w tym pliku, kiedy nastąpi taka zmiana. */
-const DOCUMENT_NUMBER = "DT-E-014/R2";
-const DOCUMENT_APPROVAL_DATE = "02.09.2026";
+const DOCUMENT_NUMBER = "PPC/001/2026";
+const DOCUMENT_APPROVAL_DATE = "28.08.2026";
 /* ============================================================ */
 
 const $ = id => document.getElementById(id);
@@ -697,15 +697,15 @@ $('exportPdfBtn').addEventListener('click', ()=>{
   ]);
 
   const leftCell = companyLogo
-    ? { image: companyLogo, width: 130, alignment:'center', margin:[0,14,0,4] }
+    ? { image: companyLogo, width: 130, alignment:'center', margin:[0,4,0,4] }
     : { text:'LOGO', alignment:'center', color:'#999999', margin:[0,20,0,20] };
 
   const rightCell = {
     table: {
       widths: ['*'],
       body: [
-        [{ text: ' ' + DOCUMENT_NUMBER, fontSize:10, alignment: 'center', margin:[4,8,4,6], border:[false,false,false,false] }],
-        [{ text: ' ' + DOCUMENT_APPROVAL_DATE, fontSize:10, alignment: 'center', margin:[4,6,4,8], border:[false,false,false,false] }]
+        [{ text: 'Nr dokumentu: ' + DOCUMENT_NUMBER, fontSize:10, margin:[4,8,4,6], border:[false,false,false,false] }],
+        [{ text: 'Data: ' + DOCUMENT_APPROVAL_DATE, fontSize:10, margin:[4,6,4,8], border:[false,false,false,false] }]
       ]
     },
     layout: {
