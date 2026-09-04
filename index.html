@@ -97,6 +97,20 @@
   .emp-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px;}
   .admin-grid{display:grid;grid-template-columns:1fr;gap:16px;}
   @media(min-width:900px){.admin-grid{grid-template-columns:1fr 1fr;}}
+  .mode-toggle{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;}
+  .mode-pill{
+    flex:1;min-width:150px;padding:12px 10px;border-radius:10px;border:2px solid var(--border);
+    background:var(--panel-alt);color:var(--text-dim);font-size:13px;font-weight:700;
+    cursor:pointer;text-align:center;transition:all .15s;
+  }
+  .mode-pill.active{border-color:var(--accent);color:var(--accent);background:rgba(245,179,1,0.1);}
+  .mode-pill span{font-weight:800;}
+  .checkbox-field{display:flex;align-items:center;}
+  .checkbox-label{display:flex;align-items:center;gap:8px;font-size:14px;text-transform:none;letter-spacing:0;font-weight:600;color:var(--text);cursor:pointer;}
+  .checkbox-label input[type=checkbox]{width:20px;height:20px;accent-color:var(--accent);cursor:pointer;flex-shrink:0;}
+  .category-badge{font-size:10px;font-weight:800;padding:2px 8px;border-radius:20px;text-transform:uppercase;}
+  .category-badge.czesci{background:rgba(76,141,229,0.15);color:var(--info);}
+  .category-badge.atrament{background:rgba(197,255,255,0.1);color:#7DD3D8;}
 </style>
 </head>
 <body>
@@ -127,15 +141,27 @@
     </div>
   </div>
   <div class="panel">
-    <div class="panel-head"><h2>Baza produktów (kod → nazwa)</h2></div>
+    <div class="panel-head"><h2>Baza produktów — Części</h2></div>
     <div class="panel-body">
-      <div class="file-drop" id="fileDrop">
+      <div class="file-drop" id="fileDropParts">
         Kliknij, aby wybrać plik CSV lub XLSX<br>
         <span style="font-size:11px;">Kolumny: kod, nazwa</span>
-        <input type="file" id="fileInput" accept=".csv,.xlsx,.xls" style="display:none;">
+        <input type="file" id="fileInputParts" accept=".csv,.xlsx,.xls" style="display:none;">
       </div>
-      <div class="small-note" id="uploadStatus"></div>
-      <div class="small-note" style="margin-top:10px;">Produktów w bazie: <b id="productCount">0</b></div>
+      <div class="small-note" id="uploadStatusParts"></div>
+      <div class="small-note" style="margin-top:10px;">Produktów (części) w bazie: <b id="productCountParts">0</b></div>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h2>Baza produktów — Atramenty i rozpuszczalniki</h2></div>
+    <div class="panel-body">
+      <div class="file-drop" id="fileDropInks">
+        Kliknij, aby wybrać plik CSV lub XLSX<br>
+        <span style="font-size:11px;">Kolumny: kod, nazwa</span>
+        <input type="file" id="fileInputInks" accept=".csv,.xlsx,.xls" style="display:none;">
+      </div>
+      <div class="small-note" id="uploadStatusInks"></div>
+      <div class="small-note" style="margin-top:10px;">Produktów (atramenty) w bazie: <b id="productCountInks">0</b></div>
     </div>
   </div>
   <div class="panel">
@@ -170,13 +196,18 @@
       <span class="badge" id="cartCount">0 pozycji</span>
     </div>
     <div class="panel-body">
+      <div class="mode-toggle">
+        <button class="mode-pill" id="modePartsBtn" data-mode="czesci">🔧 Części <span id="modePartsCount"></span></button>
+        <button class="mode-pill" id="modeInksBtn" data-mode="atrament">🧴 Atramenty / rozpuszczalniki <span id="modeInksCount"></span></button>
+      </div>
+
       <div class="field">
         <label>Kod kreskowy</label>
         <div class="scan-row">
           <input type="text" id="scanInput" placeholder="Zeskanuj kod lub wpisz ręcznie" autocomplete="off" inputmode="none">
           <button class="btn btn-accent" id="manualAddBtn">Dodaj</button>
         </div>
-        <div class="hint">Zeskanowany kod dodaje się automatycznie. Jeśli kod jest nieczytelny, wpisz go ręcznie i kliknij „Dodaj".</div>
+        <div class="hint" id="modeHint">Zeskanowany kod dodaje się automatycznie. System sam rozpozna czy to część, czy atrament/rozpuszczalnik, na podstawie bazy produktów. Jeśli kod jest nieczytelny, wpisz go ręcznie i kliknij „Dodaj".</div>
       </div>
 
       <div id="cartTableWrap">
@@ -193,9 +224,22 @@
         <label>Pracownik <span class="req-star">*</span></label>
         <select id="employeeSelect"><option value="">— wybierz —</option></select>
       </div>
-      <div class="field">
-        <label>Linia / urządzenie <span class="req-star">*</span></label>
-        <select id="lineDeviceSelect"><option value="">— wybierz —</option></select>
+
+      <div id="fieldsParts">
+        <div class="field">
+          <label>Linia / urządzenie <span class="req-star">*</span></label>
+          <select id="lineDeviceSelect"><option value="">— wybierz —</option></select>
+        </div>
+      </div>
+
+      <div id="fieldsInks" style="display:none;">
+        <div class="field">
+          <label>Data do zużycia <span class="req-star">*</span></label>
+          <input type="date" id="useByDateInput">
+        </div>
+        <div class="field checkbox-field">
+          <label class="checkbox-label"><input type="checkbox" id="mixedCheckbox"> Atrament został zamieszany przed użyciem</label>
+        </div>
       </div>
 
       <div class="footer-actions">
@@ -217,6 +261,11 @@
     </div>
     <div class="panel-body">
       <div class="filters">
+        <select id="filterCategory">
+          <option value="">Wszystkie magazyny</option>
+          <option value="czesci">🔧 Części</option>
+          <option value="atrament">🧴 Atramenty / rozpuszczalniki</option>
+        </select>
         <select id="filterEmployee"><option value="">Wszyscy pracownicy</option></select>
         <select id="filterLine"><option value="">Wszystkie linie/urządzenia</option></select>
         <input type="text" id="filterCode" placeholder="Kod / nazwa">
@@ -230,7 +279,7 @@
       <div class="scroll-table">
         <div class="empty-state" id="logEmpty">Brak zapisanych wydań.</div>
         <table id="logTable" style="display:none;">
-          <thead><tr><th>Data</th><th>Kod / produkt</th><th>Ilość</th><th>Linia/urządzenie</th><th>Pracownik</th><th>Comarch</th><th></th></tr></thead>
+          <thead><tr><th>Data</th><th>Magazyn</th><th>Kod / produkt</th><th>Ilość</th><th>Szczegóły</th><th>Pracownik</th><th>Comarch</th><th></th></tr></thead>
           <tbody id="logBody"></tbody>
         </table>
       </div>
@@ -261,14 +310,17 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 /* Logo firmy do protokołu PDF wgrywa się w panelu administratora
    (Admin -> Logo firmy) - jest zapisywane w bazie danych, nie w pliku. */
-const DOCUMENT_TITLE = "Protokół pobrań części";
 
-/* Nr dokumentu i data zatwierdzenia to stały "formularz" zatwierdzony przez
-   kontrolę jakości - nie zmienia się przy każdym wydruku, tylko wtedy, gdy
-   dokument zostanie formalnie zaktualizowany. Zmień poniższe dwie wartości
-   ręcznie w tym pliku, kiedy nastąpi taka zmiana. */
-const DOCUMENT_NUMBER = "DT-E-014/R2";
-const DOCUMENT_APPROVAL_DATE = "02.09.2026";
+/* Dwa odrębne, zatwierdzone przez kontrolę jakości formularze - nr dokumentu
+   i data zatwierdzenia nie zmieniają się przy każdym wydruku, tylko wtedy,
+   gdy dokument zostanie formalnie zaktualizowany. */
+const DOCUMENT_TITLE_PARTS = "Protokół pobrań części";
+const DOCUMENT_NUMBER_PARTS = "DT-E-014/R2";
+const DOCUMENT_APPROVAL_DATE_PARTS = "02.09.2026";
+
+const DOCUMENT_TITLE_INKS = "Protokół pobrań atramentów i rozpuszczalników";
+const DOCUMENT_NUMBER_INKS = "DT-E-013/R2";
+const DOCUMENT_APPROVAL_DATE_INKS = "02.10.2026";
 /* ============================================================ */
 
 const $ = id => document.getElementById(id);
@@ -277,7 +329,9 @@ const IS_ADMIN_ROUTE = new URLSearchParams(location.search).get('admin') === '1'
 let sb = null;
 let products = {};
 let employees = [], lines = [], devices = [];
-let cart = [];
+let cartParts = [];
+let cartInks = [];
+let currentMode = 'czesci'; // 'czesci' albo 'atrament' - przełącza się automatycznie po zeskanowaniu
 let issuesCache = [];
 let isAdmin = false;
 
@@ -301,7 +355,8 @@ function showToast(msg, isError){
 function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function fmtDate(d){ const p=n=>String(n).padStart(2,'0'); return `${p(d.getDate())}.${p(d.getMonth()+1)}.${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`; }
 
-function lookupName(code){ return products[code.toLowerCase()] || null; }
+function lookupName(code){ const p = products[code.toLowerCase()]; return p ? p.name : null; }
+function lookupCategory(code){ const p = products[code.toLowerCase()]; return p ? p.category : 'czesci'; }
 
 /* ---------- DATA LOADING ---------- */
 async function loadProducts(){
@@ -310,7 +365,7 @@ async function loadProducts(){
   const pageSize = 1000;
   let from = 0;
   while(true){
-    const { data, error } = await sb.from('products').select('code,name').range(from, from + pageSize - 1);
+    const { data, error } = await sb.from('products').select('code,name,category').range(from, from + pageSize - 1);
     if(error){ showToast('Błąd wczytywania bazy produktów: '+error.message, true); return; }
     if(!data || data.length === 0) break;
     all = all.concat(data);
@@ -318,8 +373,11 @@ async function loadProducts(){
     from += pageSize;
   }
   products = {};
-  all.forEach(r => products[r.code.toLowerCase()] = r.name);
-  const el = $('productCount'); if(el) el.textContent = all.length;
+  all.forEach(r => products[r.code.toLowerCase()] = { name: r.name, category: r.category || 'czesci' });
+  const partsCount = all.filter(r => (r.category||'czesci') === 'czesci').length;
+  const inksCount = all.filter(r => r.category === 'atrament').length;
+  const elP = $('productCountParts'); if(elP) elP.textContent = partsCount;
+  const elI = $('productCountInks'); if(elI) elI.textContent = inksCount;
 }
 
 async function loadSimpleList(table){
@@ -493,25 +551,53 @@ document.addEventListener('click', async e=>{
   }
 });
 
+function activeCart(){ return currentMode === 'atrament' ? cartInks : cartParts; }
+
+function setMode(mode, silent){
+  currentMode = mode;
+  $('modePartsBtn').classList.toggle('active', mode==='czesci');
+  $('modeInksBtn').classList.toggle('active', mode==='atrament');
+  $('fieldsParts').style.display = mode==='czesci' ? 'block' : 'none';
+  $('fieldsInks').style.display = mode==='atrament' ? 'block' : 'none';
+  renderCart();
+  if(!silent) saveCartToSession();
+}
+
+$('modePartsBtn').addEventListener('click', ()=> setMode('czesci'));
+$('modeInksBtn').addEventListener('click', ()=> setMode('atrament'));
+
 function addScanToCart(rawCode){
   const code = rawCode.trim();
   if(!code) return;
+  const category = lookupCategory(code); // 'czesci' domyślnie, jeśli kod nieznany
+  setMode(category, true);
+  const cart = activeCart();
   const existing = cart.find(c => c.code.toLowerCase() === code.toLowerCase());
   if(existing){ existing.qty += 1; } else{ cart.push({code, qty:1, name: lookupName(code)}); }
   saveCartToSession();
   renderCart();
 }
 function saveCartToSession(){
-  try{ sessionStorage.setItem('magazyn_cart', JSON.stringify(cart)); }catch(e){}
+  try{ sessionStorage.setItem('magazyn_cart', JSON.stringify({ parts: cartParts, inks: cartInks, mode: currentMode })); }catch(e){}
 }
 function restoreCartFromSession(){
   try{
     const raw = sessionStorage.getItem('magazyn_cart');
-    if(raw){ cart = JSON.parse(raw) || []; }
-  }catch(e){ cart = []; }
+    if(raw){
+      const parsed = JSON.parse(raw) || {};
+      cartParts = parsed.parts || [];
+      cartInks = parsed.inks || [];
+      currentMode = parsed.mode || 'czesci';
+    }
+  }catch(e){ cartParts = []; cartInks = []; }
 }
 
 function renderCart(){
+  const cart = activeCart();
+  const partsN = cartParts.reduce((a,c)=>a+c.qty,0);
+  const inksN = cartInks.reduce((a,c)=>a+c.qty,0);
+  $('modePartsCount').textContent = partsN ? `(${partsN})` : '';
+  $('modeInksCount').textContent = inksN ? `(${inksN})` : '';
   $('cartCount').textContent = cart.reduce((a,c)=>a+c.qty,0) + ' szt. / ' + cart.length + ' poz.';
   if(cart.length===0){ $('cartEmpty').style.display='block'; $('cartTable').style.display='none'; return; }
   $('cartEmpty').style.display='none'; $('cartTable').style.display='table';
@@ -525,6 +611,7 @@ function renderCart(){
 
 $('cartBody').addEventListener('click', e=>{
   const btn = e.target.closest('button'); if(!btn) return;
+  const cart = activeCart();
   const i = Number(btn.dataset.i); const act = btn.dataset.act;
   if(act==='inc') cart[i].qty += 1;
   if(act==='dec'){ cart[i].qty -= 1; if(cart[i].qty<=0) cart.splice(i,1); }
@@ -533,27 +620,42 @@ $('cartBody').addEventListener('click', e=>{
   renderCart();
 });
 $('clearCartBtn').addEventListener('click', ()=>{
+  const cart = activeCart();
   if(cart.length && !confirm('Wyczyścić listę zeskanowanych pozycji?')) return;
-  cart = []; saveCartToSession(); renderCart(); focusScanSilently();
+  if(currentMode==='atrament'){ cartInks = []; } else { cartParts = []; }
+  saveCartToSession(); renderCart(); focusScanSilently();
 });
 
 $('confirmBtn').addEventListener('click', async ()=>{
+  const cart = activeCart();
   const employee = $('employeeSelect').value;
-  const line = $('lineDeviceSelect').value;
   $('validationNote').textContent = '';
   if(cart.length===0){ $('validationNote').textContent = 'Lista jest pusta — zeskanuj co najmniej jedną pozycję.'; return; }
   if(!employee){ $('validationNote').textContent = 'Wybierz pracownika.'; return; }
-  if(!line){ $('validationNote').textContent = 'Wybierz linię/urządzenie.'; return; }
   if(!sb){ showToast('Brak konfiguracji bazy danych', true); return; }
 
-  const rows = cart.map(item => ({ code: item.code, product_name: item.name || null, qty: item.qty, line, device: null, employee, comarch_done:false }));
+  let rows;
+  if(currentMode === 'atrament'){
+    const useByDate = $('useByDateInput').value;
+    const mixed = $('mixedCheckbox').checked;
+    if(!useByDate){ $('validationNote').textContent = 'Podaj datę do zużycia.'; return; }
+    rows = cart.map(item => ({ code: item.code, product_name: item.name || null, qty: item.qty, line: null, device: null, employee, comarch_done:false, category:'atrament', use_by_date: useByDate, mixed_before_use: mixed }));
+  } else {
+    const line = $('lineDeviceSelect').value;
+    if(!line){ $('validationNote').textContent = 'Wybierz linię/urządzenie.'; return; }
+    rows = cart.map(item => ({ code: item.code, product_name: item.name || null, qty: item.qty, line, device: null, employee, comarch_done:false, category:'czesci', use_by_date: null, mixed_before_use: null }));
+  }
+
   const { data, error } = await sb.from('issues').insert(rows).select();
   if(error){ showToast('Błąd zapisu: ' + error.message, true); return; }
   if(data && data.length){ issuesCache = [...data, ...issuesCache]; populateMonthFilter(); renderLog(); }
-  cart = []; saveCartToSession(); renderCart();
+  if(currentMode==='atrament'){ cartInks = []; } else { cartParts = []; }
+  saveCartToSession(); renderCart();
   $('employeeSelect').value = '';
   $('lineDeviceSelect').value = '';
-  showToast('Zapisano pobranie (' + line + ', ' + employee + ')');
+  $('useByDateInput').value = '';
+  $('mixedCheckbox').checked = false;
+  showToast('Zapisano pobranie (' + employee + ')');
   focusScanSilently();
   loadIssues();
 });
@@ -582,12 +684,28 @@ function getFilteredIssues(){
   const fCode = $('filterCode').value.trim().toLowerCase();
   const fStatus = $('filterStatus').value;
   const fMonth = $('filterMonth').value;
+  const fCategory = $('filterCategory').value;
   return issuesCache
     .filter(r => !fEmp || r.employee === fEmp)
     .filter(r => !fLine || r.line === fLine || r.device === fLine)
     .filter(r => !fCode || (r.code||'').toLowerCase().includes(fCode) || (r.product_name||'').toLowerCase().includes(fCode))
     .filter(r => !fStatus || (fStatus==='done' ? r.comarch_done : !r.comarch_done))
-    .filter(r => !fMonth || monthKey(new Date(r.created_at)) === fMonth);
+    .filter(r => !fMonth || monthKey(new Date(r.created_at)) === fMonth)
+    .filter(r => !fCategory || (r.category||'czesci') === fCategory);
+}
+
+function categoryBadge(cat){
+  return cat === 'atrament'
+    ? '<span class="category-badge atrament">Atramenty</span>'
+    : '<span class="category-badge czesci">Części</span>';
+}
+function detailsCell(r){
+  if((r.category||'czesci') === 'atrament'){
+    const ub = r.use_by_date ? new Date(r.use_by_date).toLocaleDateString('pl-PL') : '—';
+    const mixed = r.mixed_before_use ? 'Tak' : 'Nie';
+    return `Zużyć do: ${escapeHtml(ub)}<br><span style="color:var(--text-dim);font-size:11px;">Zamieszany: ${mixed}</span>`;
+  }
+  return escapeHtml(r.line||'') + (r.device ? ' / ' + escapeHtml(r.device) : '');
 }
 
 function renderLog(){
@@ -598,9 +716,10 @@ function renderLog(){
   $('logBody').innerHTML = rows.map(r => `
     <tr>
       <td>${fmtDate(new Date(r.created_at))}</td>
+      <td>${categoryBadge(r.category)}</td>
       <td><div class="code-cell"><span class="code-pill">${escapeHtml(r.code)}</span><button class="copy-btn" data-copy="${escapeHtml(r.code)}" title="Kopiuj kod"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button></div>${r.product_name ? `<span class="prod-name">${escapeHtml(r.product_name)}</span>` : ''}</td>
       <td>${r.qty}</td>
-      <td>${escapeHtml(r.line||'')}${r.device ? ' / ' + escapeHtml(r.device) : ''}</td>
+      <td>${detailsCell(r)}</td>
       <td>${escapeHtml(r.employee)}</td>
       <td><input type="checkbox" class="comarch-check" data-id="${r.id}" ${r.comarch_done?'checked':''}></td>
       <td><button class="btn btn-danger btn-small" data-id="${r.id}" data-act="del-log">Cofnij</button></td>
@@ -626,7 +745,7 @@ $('logBody').addEventListener('change', async e=>{
   if(row){ row.comarch_done = done; }
 });
 
-['filterEmployee','filterLine','filterCode','filterStatus','filterMonth'].forEach(id=>{
+['filterEmployee','filterLine','filterCode','filterStatus','filterMonth','filterCategory'].forEach(id=>{
   $(id).addEventListener('input', renderLog);
   $(id).addEventListener('change', renderLog);
 });
@@ -634,9 +753,15 @@ $('logBody').addEventListener('change', async e=>{
 $('exportBtn').addEventListener('click', ()=>{
   const rows = getFilteredIssues();
   if(rows.length===0){ showToast('Brak danych do eksportu', true); return; }
-  const header = ['Data','Kod','Nazwa','Ilość','Linia/urządzenie','Pracownik','Zdjęte w Comarch'];
+  const header = ['Data','Magazyn','Kod','Nazwa','Ilość','Linia/urządzenie','Data do zużycia','Zamieszany','Pracownik','Zdjęte w Comarch'];
   const lines_ = rows.map(r => [
-    fmtDate(new Date(r.created_at)), r.code, r.product_name||'', r.qty, (r.line||'') + (r.device ? ' / ' + r.device : ''), r.employee, r.comarch_done?'TAK':'NIE'
+    fmtDate(new Date(r.created_at)),
+    r.category === 'atrament' ? 'Atramenty' : 'Części',
+    r.code, r.product_name||'', r.qty,
+    (r.line||'') + (r.device ? ' / ' + r.device : ''),
+    r.use_by_date ? new Date(r.use_by_date).toLocaleDateString('pl-PL') : '',
+    r.category==='atrament' ? (r.mixed_before_use ? 'TAK' : 'NIE') : '',
+    r.employee, r.comarch_done?'TAK':'NIE'
   ].map(v => `"${String(v).replace(/"/g,'""')}"`).join(';'));
   const csv = [header.join(';'), ...lines_].join('\n');
   const blob = new Blob(['\ufeff'+csv], {type:'text/csv;charset=utf-8;'});
@@ -680,32 +805,61 @@ $('logoInput')?.addEventListener('change', async e=>{
   $('logoInput').value = '';
 });
 
-/* ---------- EKSPORT PDF (Protokół pobrań części) ---------- */
+/* ---------- EKSPORT PDF (dwa odrębne protokoły: części / atramenty) ---------- */
 $('exportPdfBtn').addEventListener('click', ()=>{
   const rows = getFilteredIssues();
   if(rows.length===0){ showToast('Brak danych do eksportu', true); return; }
 
-  const headerRow = ['Data','Kod','Nazwa','Ilość','Linia/urządzenie','Pracownik','Comarch'].map(t => ({ text:t, bold:true, fontSize:9, fillColor:'#EDEDED' }));
-  const bodyRows = rows.map(r => [
-    { text: fmtDate(new Date(r.created_at)), fontSize:8 },
-    { text: r.code, fontSize:8 },
-    { text: r.product_name || '', fontSize:8 },
-    { text: String(r.qty), fontSize:8, alignment:'center' },
-    { text: (r.line||'') + (r.device ? ' / '+r.device : ''), fontSize:8 },
-    { text: r.employee, fontSize:8 },
-    { text: r.comarch_done ? 'TAK' : 'NIE', fontSize:8, alignment:'center' }
-  ]);
+  const fCategory = $('filterCategory').value;
+  const hasParts = rows.some(r => (r.category||'czesci') === 'czesci');
+  const hasInks = rows.some(r => r.category === 'atrament');
+  if(!fCategory && hasParts && hasInks){
+    showToast('Wskazówka: ustaw filtr "Magazyn" na Części lub Atramenty, żeby dostać właściwy protokół', false);
+  }
+
+  const isInks = fCategory === 'atrament' || (!fCategory && hasInks && !hasParts);
+  const docTitle = isInks ? DOCUMENT_TITLE_INKS : DOCUMENT_TITLE_PARTS;
+  const docNumber = isInks ? DOCUMENT_NUMBER_INKS : DOCUMENT_NUMBER_PARTS;
+  const docDate = isInks ? DOCUMENT_APPROVAL_DATE_INKS : DOCUMENT_APPROVAL_DATE_PARTS;
+
+  let headerRow, bodyRows, colWidths;
+  if(isInks){
+    headerRow = ['Data','Kod','Nazwa','Ilość','Data do zużycia','Zamieszany','Pracownik','Comarch'].map(t => ({ text:t, bold:true, fontSize:9, fillColor:'#EDEDED' }));
+    bodyRows = rows.map(r => [
+      { text: fmtDate(new Date(r.created_at)), fontSize:8 },
+      { text: r.code, fontSize:8 },
+      { text: r.product_name || '', fontSize:8 },
+      { text: String(r.qty), fontSize:8, alignment:'center' },
+      { text: r.use_by_date ? new Date(r.use_by_date).toLocaleDateString('pl-PL') : '', fontSize:8, alignment:'center' },
+      { text: r.mixed_before_use ? 'TAK' : 'NIE', fontSize:8, alignment:'center' },
+      { text: r.employee, fontSize:8 },
+      { text: r.comarch_done ? 'TAK' : 'NIE', fontSize:8, alignment:'center' }
+    ]);
+    colWidths = [55, 55, '*', 30, 65, 55, 90, 40];
+  } else {
+    headerRow = ['Data','Kod','Nazwa','Ilość','Linia/urządzenie','Pracownik','Comarch'].map(t => ({ text:t, bold:true, fontSize:9, fillColor:'#EDEDED' }));
+    bodyRows = rows.map(r => [
+      { text: fmtDate(new Date(r.created_at)), fontSize:8 },
+      { text: r.code, fontSize:8 },
+      { text: r.product_name || '', fontSize:8 },
+      { text: String(r.qty), fontSize:8, alignment:'center' },
+      { text: (r.line||'') + (r.device ? ' / '+r.device : ''), fontSize:8 },
+      { text: r.employee, fontSize:8 },
+      { text: r.comarch_done ? 'TAK' : 'NIE', fontSize:8, alignment:'center' }
+    ]);
+    colWidths = [60, 60, '*', 30, 70, 90, 40];
+  }
 
   const leftCell = companyLogo
-    ? { image: companyLogo, width: 130, alignment:'center', margin:[0,14,0,4] }
+    ? { image: companyLogo, width: 130, alignment:'center', margin:[0,4,0,4] }
     : { text:'LOGO', alignment:'center', color:'#999999', margin:[0,20,0,20] };
 
   const rightCell = {
     table: {
       widths: ['*'],
       body: [
-        [{ text: ' ' + DOCUMENT_NUMBER, fontSize:10, alignment: 'center', margin:[4,8,4,6], border:[false,false,false,false] }],
-        [{ text: ' ' + DOCUMENT_APPROVAL_DATE, fontSize:10, alignment: 'center', margin:[4,6,4,8], border:[false,false,false,false] }]
+        [{ text: 'Nr dokumentu: ' + docNumber, fontSize:10, margin:[4,8,4,6], border:[false,false,false,false] }],
+        [{ text: 'Data: ' + docDate, fontSize:10, margin:[4,6,4,8], border:[false,false,false,false] }]
       ]
     },
     layout: {
@@ -725,7 +879,7 @@ $('exportPdfBtn').addEventListener('click', ()=>{
           widths: [150, '*', 150],
           body: [[
             leftCell,
-            { text: DOCUMENT_TITLE, fontSize: 18, bold:true, alignment:'center', margin:[0,20,0,0] },
+            { text: docTitle, fontSize: 16, bold:true, alignment:'center', margin:[0,20,0,0] },
             rightCell
           ]]
         },
@@ -744,7 +898,7 @@ $('exportPdfBtn').addEventListener('click', ()=>{
       {
         table: {
           headerRows: 1,
-          widths: [60, 60, '*', 30, 70, 90, 40],
+          widths: colWidths,
           body: [headerRow, ...bodyRows]
         },
         layout: 'lightHorizontalLines'
@@ -753,7 +907,7 @@ $('exportPdfBtn').addEventListener('click', ()=>{
     defaultStyle: { font: 'Roboto' }
   };
 
-  pdfMake.createPdf(docDefinition).download('protokol_' + new Date().toISOString().slice(0,10) + '.pdf');
+  pdfMake.createPdf(docDefinition).download('protokol_' + (isInks ? 'atramenty' : 'czesci') + '_' + new Date().toISOString().slice(0,10) + '.pdf');
 });
 
 /* ---------- ADMIN LOGIN (dostępny tylko na ?admin=1) ---------- */
@@ -826,29 +980,33 @@ document.body.addEventListener('click', async e=>{
   }
 });
 
-/* ---------- ADMIN: BAZA PRODUKTÓW ---------- */
-$('fileDrop')?.addEventListener('click', ()=> $('fileInput').click());
-$('fileInput')?.addEventListener('change', async e=>{
-  const file = e.target.files[0];
-  if(!file) return;
-  $('uploadStatus').textContent = 'Wczytywanie pliku...';
-  try{
-    const rows = await parseProductFile(file);
-    if(rows.length===0){ $('uploadStatus').textContent = 'Nie znaleziono poprawnych wierszy (kod, nazwa).'; return; }
-    $('uploadStatus').textContent = `Zapisywanie ${rows.length} pozycji...`;
-    const chunkSize = 500;
-    for(let i=0;i<rows.length;i+=chunkSize){
-      const { error } = await sb.from('products').upsert(rows.slice(i, i+chunkSize), { onConflict:'code' });
-      if(error){ $('uploadStatus').textContent = 'Błąd zapisu: ' + error.message; return; }
-    }
-    $('uploadStatus').textContent = `Zaimportowano ${rows.length} produktów.`;
-    showToast('Baza produktów zaktualizowana');
-    loadProducts();
-  }catch(err){ $('uploadStatus').textContent = 'Błąd wczytywania pliku: ' + err.message; }
-  $('fileInput').value = '';
-});
+/* ---------- ADMIN: BAZA PRODUKTÓW (części / atramenty) ---------- */
+function setupProductUpload(dropId, inputId, statusId, category){
+  $(dropId)?.addEventListener('click', ()=> $(inputId).click());
+  $(inputId)?.addEventListener('change', async e=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    $(statusId).textContent = 'Wczytywanie pliku...';
+    try{
+      const rows = await parseProductFile(file, category);
+      if(rows.length===0){ $(statusId).textContent = 'Nie znaleziono poprawnych wierszy (kod, nazwa).'; return; }
+      $(statusId).textContent = `Zapisywanie ${rows.length} pozycji...`;
+      const chunkSize = 500;
+      for(let i=0;i<rows.length;i+=chunkSize){
+        const { error } = await sb.from('products').upsert(rows.slice(i, i+chunkSize), { onConflict:'code' });
+        if(error){ $(statusId).textContent = 'Błąd zapisu: ' + error.message; return; }
+      }
+      $(statusId).textContent = `Zaimportowano ${rows.length} produktów.`;
+      showToast('Baza produktów zaktualizowana');
+      loadProducts();
+    }catch(err){ $(statusId).textContent = 'Błąd wczytywania pliku: ' + err.message; }
+    $(inputId).value = '';
+  });
+}
+setupProductUpload('fileDropParts', 'fileInputParts', 'uploadStatusParts', 'czesci');
+setupProductUpload('fileDropInks', 'fileInputInks', 'uploadStatusInks', 'atrament');
 
-function normalizeRow(row){
+function normalizeRow(row, category){
   const keys = Object.keys(row);
   const codeKey = keys.find(k => /^(kod|code|symbol|indeks)$/i.test(k.trim()));
   const nameKey = keys.find(k => /^(nazwa|name|opis|description)$/i.test(k.trim()));
@@ -857,20 +1015,20 @@ function normalizeRow(row){
   else{ const vals = Object.values(row); code = vals[0]; name = vals[1]; }
   code = (code||'').toString().trim(); name = (name||'').toString().trim();
   if(!code) return null;
-  return { code, name: name || code };
+  return { code, name: name || code, category };
 }
-function parseProductFile(file){
+function parseProductFile(file, category){
   return new Promise((resolve, reject)=>{
     const ext = file.name.split('.').pop().toLowerCase();
     if(ext === 'csv'){
-      Papa.parse(file, { header:true, skipEmptyLines:true, complete: res => resolve(res.data.map(normalizeRow).filter(Boolean)), error: reject });
+      Papa.parse(file, { header:true, skipEmptyLines:true, complete: res => resolve(res.data.map(r=>normalizeRow(r,category)).filter(Boolean)), error: reject });
     } else {
       const reader = new FileReader();
       reader.onload = evt => {
         try{
           const wb = XLSX.read(evt.target.result, { type:'array' });
           const json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval:'' });
-          resolve(json.map(normalizeRow).filter(Boolean));
+          resolve(json.map(r=>normalizeRow(r,category)).filter(Boolean));
         }catch(err){ reject(err); }
       };
       reader.onerror = reject;
@@ -878,6 +1036,7 @@ function parseProductFile(file){
     }
   });
 }
+
 
 /* ---------- REALTIME ---------- */
 if(sb){
@@ -892,7 +1051,7 @@ if(sb){
 async function init(){
   if(!sb) return;
   restoreCartFromSession();
-  renderCart();
+  setMode(currentMode, true);
   if(IS_ADMIN_ROUTE){
     const { data: { session } } = await sb.auth.getSession();
     isAdmin = !!session;

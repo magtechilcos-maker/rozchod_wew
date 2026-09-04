@@ -105,15 +105,38 @@ Warto zapisać ten adres jako zakładkę na komputerze biurowym.
 2. W panelu administratora wgraj **bazę produktów** (plik CSV lub XLSX z kolumnami `kod` i `nazwa`).
 3. Dodaj **pracowników**, **linie produkcyjne** i **urządzenia** — to trzy osobne listy, z których na hali wybiera się gotowe pozycje z rozwijanej listy, bez klawiatury ekranowej.
 4. W sekcji **„Logo firmy"** wgraj plik PNG/JPG z logo — pojawi się potem w lewym górnym rogu każdego wygenerowanego protokołu PDF.
+5. Wgraj **dwie oddzielne bazy produktów** — „Baza produktów — Części" i „Baza produktów — Atramenty i rozpuszczalniki". To właśnie ten podział decyduje, do którego magazynu system przypisze dany kod po zeskanowaniu.
 
 Zwykły adres strony (bez `?admin=1`) pokazuje tylko ekran skanowania i historię — to jest widok dla tabletów w magazynie.
 
-## Protokół PDF
+## Dwa magazyny: części oraz atramenty/rozpuszczalniki
 
-W historii wydań, obok „Eksport CSV", jest przycisk **„Protokół PDF"**. Generuje dokument z nagłówkiem
-(logo firmy / tytuł „Protokół pobrań części" / numer dokumentu i data), a poniżej tabelą dokładnie tych
-pozycji, które są aktualnie widoczne po zastosowaniu filtrów w historii (np. tylko dla wybranej linii
-i dnia). Numer dokumentu proponuje się automatycznie, ale można go ręcznie zmienić przed pobraniem pliku.
+Aplikacja obsługuje teraz **jeden wspólny skaner** dla obu magazynów. Po zeskanowaniu kodu system
+sprawdza w bazie produktów, do której kategorii należy dany kod, i **automatycznie przełącza tryb**:
+
+- **Części** — wymaga: pracownik + linia/urządzenie (jak dotychczas).
+- **Atramenty / rozpuszczalniki** — wymaga: pracownik + data do zużycia + checkbox „zamieszany przed użyciem".
+
+Na ekranie skanowania widać dwa przełączniki na górze („🔧 Części" / „🧴 Atramenty") z licznikiem
+pozycji w każdym z nich — można też przełączyć tryb ręcznie, np. przy ręcznym wpisywaniu kodu, którego
+jeszcze nie ma w bazie produktów (system domyślnie potraktuje nieznany kod jako „Część", dopóki go nie
+dopiszesz do właściwej listy w adminie).
+
+**Ważne:** rozpoznawanie kategorii działa wyłącznie na podstawie tego, do której z dwóch baz produktów
+(część / atrament) dany kod został wcześniej wgrany w adminie — sam kod kreskowy (np. EAN-13) nie niesie
+takiej informacji sam w sobie.
+
+W historii wydań pojawił się filtr **„Magazyn"** oraz kolumna „Szczegóły", pokazująca albo linię/urządzenie,
+albo datę do zużycia i informację o zamieszaniu — zależnie od kategorii wpisu.
+
+**Protokół PDF** generuje teraz **dwa różne dokumenty** w zależności od ustawionego filtra „Magazyn":
+- Filtr „Części" (lub brak filtra, gdy widoczne są tylko części) → protokół z nagłówkiem i numerem
+  ustawionym w `DOCUMENT_TITLE_PARTS` / `DOCUMENT_NUMBER_PARTS` / `DOCUMENT_APPROVAL_DATE_PARTS`.
+- Filtr „Atramenty i rozpuszczalniki" → protokół z `DOCUMENT_TITLE_INKS` / `DOCUMENT_NUMBER_INKS` /
+  `DOCUMENT_APPROVAL_DATE_INKS`, z dodatkowymi kolumnami „Data do zużycia" i „Zamieszany".
+
+Ustaw te cztery pary stałych na górze `index.html` na numery i daty zatwierdzone przez kontrolę jakości
+dla obu formularzy — analogicznie do tego, co zrobiliście wcześniej dla protokołu części.
 
 Gotowe — aplikacja jest w pełni funkcjonalna i darmowa (Supabase i GitHub Pages mają darmowe plany, które w zupełności wystarczą do takiego zastosowania).
 
