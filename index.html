@@ -851,15 +851,15 @@ $('exportPdfBtn').addEventListener('click', ()=>{
   }
 
   const leftCell = companyLogo
-    ? { image: companyLogo, width: 130, alignment:'center', margin:[0,4,0,4] }
+    ? { image: companyLogo, width: 130, alignment:'center', margin:[0,14,0,4] }
     : { text:'LOGO', alignment:'center', color:'#999999', margin:[0,20,0,20] };
 
   const rightCell = {
     table: {
       widths: ['*'],
       body: [
-        [{ text: '' + docNumber, fontSize:10, margin:[4,8,4,6], border:[false,false,false,false] }],
-        [{ text: '' + docDate, fontSize:10, margin:[4,6,4,8], border:[false,false,false,false] }]
+        [{ text: '' + docNumber, fontSize:10, alignment: 'center', margin:[4,8,4,6], border:[false,false,false,false] }],
+        [{ text: '' + docDate, fontSize:10, alignment: 'center', margin:[4,6,4,8], border:[false,false,false,false] }]
       ]
     },
     layout: {
