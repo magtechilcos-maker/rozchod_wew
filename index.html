@@ -238,7 +238,7 @@
           <input type="date" id="useByDateInput">
         </div>
         <div class="field checkbox-field">
-          <label class="checkbox-label"><input type="checkbox" id="mixedCheckbox"> Atrament został zamieszany przed użyciem</label>
+          <label class="checkbox-label"><input type="checkbox" id="mixedCheckbox" checked> Atrament został zamieszany przed użyciem</label>
         </div>
       </div>
 
@@ -319,8 +319,8 @@ const DOCUMENT_NUMBER_PARTS = "DT-E-014/R2";
 const DOCUMENT_APPROVAL_DATE_PARTS = "02.09.2026";
 
 const DOCUMENT_TITLE_INKS = "Protokół pobrań atramentów i rozpuszczalników";
-const DOCUMENT_NUMBER_INKS = "DT-E-013/R2";
-const DOCUMENT_APPROVAL_DATE_INKS = "02.10.2026";
+const DOCUMENT_NUMBER_INKS = "PPA/001/2026";
+const DOCUMENT_APPROVAL_DATE_INKS = "28.08.2026";
 /* ============================================================ */
 
 const $ = id => document.getElementById(id);
@@ -572,6 +572,7 @@ function addScanToCart(rawCode){
   const category = lookupCategory(code); // 'czesci' domyślnie, jeśli kod nieznany
   setMode(category, true);
   const cart = activeCart();
+  if(category === 'atrament' && cart.length === 0){ $('mixedCheckbox').checked = true; }
   const existing = cart.find(c => c.code.toLowerCase() === code.toLowerCase());
   if(existing){ existing.qty += 1; } else{ cart.push({code, qty:1, name: lookupName(code)}); }
   saveCartToSession();
@@ -654,7 +655,7 @@ $('confirmBtn').addEventListener('click', async ()=>{
   $('employeeSelect').value = '';
   $('lineDeviceSelect').value = '';
   $('useByDateInput').value = '';
-  $('mixedCheckbox').checked = false;
+  $('mixedCheckbox').checked = true;
   showToast('Zapisano pobranie (' + employee + ')');
   focusScanSilently();
   loadIssues();
@@ -851,15 +852,15 @@ $('exportPdfBtn').addEventListener('click', ()=>{
   }
 
   const leftCell = companyLogo
-    ? { image: companyLogo, width: 130, alignment:'center', margin:[0,14,0,4] }
+    ? { image: companyLogo, width: 130, alignment:'center', margin:[0,4,0,4] }
     : { text:'LOGO', alignment:'center', color:'#999999', margin:[0,20,0,20] };
 
   const rightCell = {
     table: {
       widths: ['*'],
       body: [
-        [{ text: '' + docNumber, fontSize:10, alignment: 'center', margin:[4,8,4,6], border:[false,false,false,false] }],
-        [{ text: '' + docDate, fontSize:10, alignment: 'center', margin:[4,6,4,8], border:[false,false,false,false] }]
+        [{ text: 'Nr dokumentu: ' + docNumber, fontSize:10, margin:[4,8,4,6], border:[false,false,false,false] }],
+        [{ text: 'Data: ' + docDate, fontSize:10, margin:[4,6,4,8], border:[false,false,false,false] }]
       ]
     },
     layout: {
